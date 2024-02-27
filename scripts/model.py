@@ -11,20 +11,9 @@ import torch.nn as nn
 import torch_utils
 import dnnlib
 
-#from huggingface_hub import hf_hub_download
-from modules import safe
-
-current_dir = pathlib.Path(__file__).parent
-submodule_dir = current_dir / 'stylegan3'
-sys.path.insert(0, submodule_dir.as_posix())
-
-HF_TOKEN = os.getenv('HF_TOKEN')
-
-
 class Model:
     def __init__(self):
-        self.device = torch.device(
-            'cuda:0' if torch.cuda.is_available() else 'cpu')
+        self.device = None
         self.model_name = None
         self.G = None
 
@@ -84,6 +73,12 @@ class Model:
         w = self.G.mapping.w_avg.unsqueeze(0).unsqueeze(0).repeat(1, 16, 1).to(self.device)
         return w
     
+    def set_device(self, device='cpu') -> None:
+        if (device == self.device):
+            return
+        self.device = device
+        self.G = None
+    
     def set_model(self, model_name: str) -> None:
         if model_name == self.model_name and self.G is not None:
             return
@@ -95,17 +90,20 @@ class Model:
         return self.w_to_img(w)[0]
 
 
-    def set_model_and_generate_image(self, model_name: str, seed: int,
+    def set_model_and_generate_image(self, device: str, model_name: str, seed: int,
                                      truncation_psi: float, randomSeed: bool) -> np.ndarray:
+        
+        self.set_device(device)
+        self.set_model(model_name)
         if randomSeed:
             import random
             seed = random.randint(0, 4294967295 - 1)        
-        self.set_model(model_name)
         outputSeedStr = 'Seed: ' + str(seed)
         return self.generate_image(seed, truncation_psi), outputSeedStr, seed
         
-    def set_model_and_generate_styles(self, model_name: str, seed1: int, seed2: int,
+    def set_model_and_generate_styles(self, device: str, model_name: str, seed1: int, seed2: int,
                                      truncation_psi: float, styleDrop: str, style_interp : float) -> np.ndarray:        
+        self.set_device(device)
         self.set_model(model_name)
         im1 = self.generate_image(seed1, truncation_psi)
         im2 = self.generate_image(seed2, truncation_psi)

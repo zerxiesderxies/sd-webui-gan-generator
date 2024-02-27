@@ -1,6 +1,6 @@
 import modules.scripts as scripts
 import gradio as gr
-import os
+import glob, os
 
 from modules import script_callbacks
 import json
@@ -13,9 +13,12 @@ from scripts.model import Model
 
 model = Model()
 
-DESCRIPTION = '''# StyleGAN3 Simple Face Generator
+DESCRIPTION = '''# StyleGAN3 Simple Image Generator Extension
 
-Use this tool to generate random faces with a pretrained StyleGAN3 network of your choice. Recommend [BroGAN](https://huggingface.co/quartzermz/BroGANv1.0.0) via [https://github.com/NVlabs/stylegan3](https://github.com/NVlabs/stylegan3).
+Use this tool to generate random images with a pretrained StyleGAN3 network of your choice. 
+Download model pickle files and place them in sd-webui-gan-generator/models folder. 
+Supports generation with the cpu or gpu0. See available pretrained networks via [https://github.com/NVlabs/stylegan3](https://github.com/NVlabs/stylegan3).
+Recommend using stylegan3-r-ffhq or stylegan2-celebahq
 '''
 def swap_slider(slider1, slider2):
     return slider2, slider1
@@ -30,8 +33,8 @@ def send_style(slider1):
 def update_model_list():
     currentfile = os.path.dirname(__file__)
     path = currentfile + '\\..\\models\\'    
-    return os.listdir(path)
-
+    return [os.path.basename(file) for file in glob.glob(path+"*.pkl")]
+    
 def update_model_drop():
     new_choices = gr.Dropdown.update(choices = update_model_list())
     return new_choices
@@ -42,10 +45,8 @@ def on_ui_tabs():
         with gr.Column():
             modelDrop = gr.Dropdown(choices = update_model_list(), label="Model Selection", info="Place into models directory")            
             model_refresh_button = gr.Button('Refresh')
-                
+            deviceDrop = gr.Dropdown(choices = ['cpu','cuda:0'], value='cpu', label='Generation Device', info='Generate using CPU or GPU')
                                 
-            model_name = 'BROGAN-V1.0.0'
-
         with gr.Tabs():
             with gr.TabItem('Simple Image Gen'):
                 with gr.Row():
@@ -74,7 +75,6 @@ def on_ui_tabs():
             with gr.TabItem('Style Mixing'):
                 with gr.Row():
                     with gr.Column():
-                        model_name = 'BROGAN-V1.0.0'
                         seed1 = gr.Slider(0,
                                          np.iinfo(np.uint32).max,
                                          step=1,
@@ -111,10 +111,10 @@ def on_ui_tabs():
                         styleim = gr.Image(label='Style Mixed Image', elem_id='style')
         model_refresh_button.click(fn=update_model_drop,inputs=[],outputs=[modelDrop])
         simple_run_button.click(fn=model.set_model_and_generate_image,
-                         inputs=[modelDrop,seed,
+                         inputs=[deviceDrop, modelDrop,seed,
                              psi, randomSeed], outputs=[result, outputSeed, seed])
         style_run_button.click(fn=model.set_model_and_generate_styles,
-                         inputs=[modelDrop,seed1, seed2, psi_style, styleDrop[0], style_interp], outputs=[seed1im, seed2im, styleim, seed1txt, seed2txt])
+                         inputs=[deviceDrop, modelDrop,seed1, seed2, psi_style, styleDrop[0], style_interp], outputs=[seed1im, seed2im, styleim, seed1txt, seed2txt])
         swap_seed_button.click(fn=swap_slider, inputs=[seed1, seed2], outputs=[seed1,seed2])
         random_seeds_button.click(fn=random_seeds, inputs=[seed1,seed2], outputs=[seed1,seed2])
         send_to_style_button1.click(fn=send_style, inputs=[seed],outputs=[seed1])
