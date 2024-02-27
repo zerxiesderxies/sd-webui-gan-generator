@@ -1,60 +1,97 @@
-# Prompt Generator
+# Simple StyleGAN3 (and StyleGAN2) Generator Extension
 
-Adds a tab to the webui that allows the user to generate a prompt from a small base prompt. Based on [FredZhang7/distilgpt2-stable-diffusion-v2](https://huggingface.co/FredZhang7/distilgpt2-stable-diffusion-v2) and [Gustavosta/MagicPrompt-Stable-Diffusion](https://huggingface.co/Gustavosta/MagicPrompt-Stable-Diffusion). I did nothing apart from porting it to [AUTOMATIC1111 WebUI](https://github.com/AUTOMATIC1111/stable-diffusion-webui)
+Adds a tab to the webui that allows the user to generate images from locally downloaded StyleGAN2 or StyleGAN3 models. Created as a proof of concept and is in very early stages. This extension also provides style mixing capabilities. Tested only in Windows.
+Based on [NVlabs/stylegan3](https://https://github.com/NVlabs/stylegan3) with style mixing help from [tocantrell/stylegan3-fun-pipeline](https://github.com/tocantrell/stylegan3-fun-pipeline/)
 
+## Features!
 
+### Benefits of StyleGAN 
+- Say goodbye to same face; StyleGAN models are capabile of generating over 4 billion unique and highly detailed diverse images
+- Very fast. Can generate new images in tenths of a second on GPU for models that are less than 300 MB in size
+- Cohesive and Smooth Latent Space: Can easily interpolate between faces, genders, animals, anything. Want to ask animal ffhq for the exact midpoint between a dog and a cat? StyleGAN can do that!
+- Other cool stylegan features like DragGan, Projection of Real Images, and more
 
-![Screenshot 2023-04-29 000027](https://user-images.githubusercontent.com/8998556/235261664-2c92689d-9915-4543-8d6a-57a8ecd0f484.png)
+### Features of Webui Extension
+- Simple gui tab for hosting any of your StyleGAN checkpoints
+- Style mixing between two seeds for even more customization
+- Can easily randomize seed input. Can also let chance decide which seeds to style mix today
+- Can combine this with stable diffusion's inpainting/outpainting or faceswap to create consistent, realistic, fictional characters.
 
+## Prerequisites (GPU Only)
+
+### Visual Studio Build Tools - WINDOWS
+
+1. Install Visual Studio 2022: This step is required to build some of the dependencies. You can use the Community version of Visual Studio 2022, which can be downloaded from the following link: https://visualstudio.microsoft.com/downloads/
+2. OR Install only the VS C++ Build Tools: If you don’t need the full Visual Studio suite, you can choose to install only the VS C++ Build Tools. During the installation process, select the option for “Desktop Development with C++” found under the “Workloads -> Desktop & Mobile” section. The VS C++ Build Tools can be downloaded from this link: https://visualstudio.microsoft.com/visual-cpp-build-tools/
+
+### Building Torch Util Libraries - WINDOWS
+
+1. When running on GPU, the following libraries are built by torch_utils: `bias_act_plugin`, `upfirdn2d_plugin`, and `filtered_lrelu_plugin` (for StyleGAN2 models)
+2. In order to build (in addition to VS Tools), they require python3XX.lib. Because sd-webui installs into a venv, you will need to manually copy your. Alternatively you can add 
+- Open command prompt and type `python`
+- `>>> import os, sys`
+- `>>> os.path.dirname(sys.executable)`
+- Navigate to indicated directory and look for libs folder. Copy those files and create a folder in the stable diffusion environment folder: `venv/scripts/libs`
+- Alternatively you can add `Python\Python310\libs` to your system path variable
+
+Notes:
+- If during run you get a build failed, it mostly will be either due to missing library (e.g. python310.lib) or your cuda toolkit is not compatible with your GPU or pytorch installation.
 
 ## Installation
 
 1. Install [AUTOMATIC1111's Stable Diffusion Webui](https://github.com/AUTOMATIC1111/stable-diffusion-webui)
-2. Clone this repository into the `extensions` folder inside the webui
+2. Navigate to the `.\extensions` and tab. Click `Install from URL`
+3. Place `https://github.com/zerxiesderxies/sd-webui-gan-generator/` under `URL for extension's git repository` and Install (Note you may need to manually add the directory name `sd-webui-gan-generator`)
 
 ## Usage
 
-1. Write in the prompt in the *Start of the prompt* text box
-2. Select which model you want to use
-3. Click Generate and wait
+**NOTE**: StyleGAN2 pretrained checkpoints (pickles) contain additional classes (e.g. torch_utils) that are not compatible with Stable Diffusions pickle scanner. You will need to set `--disable-safe-unpickle` in order to load them. TODO: Need Workaround
+**WARNING**: Setting `--disable-safe-unpickle` exposes your webui to malicious code hidden in pickle files. Use at your own risk. Please verify the integrity of your .pkl files before using.
 
-The initial use of the model may take longer as it needs to be downloaded to your machine for offline use. The model will be used on your device and will be stored in the default location of `*username*/.cache/huggingface/hub/models`. The entire process of generating results will be done on your local machine and not require internet access.
+### Downloading models
+
+1. Download any StyleGAN2 or StyleGAN3 model you prefer.
+- Recommend either ffhq or celeba pre-trained networks from NVlabs [stylegan3 models](https://catalog.ngc.nvidia.com/orgs/nvidia/teams/research/models/stylegan3) [stylegan2 models](https://catalog.ngc.nvidia.com/orgs/nvidia/teams/research/models/stylegan2)
+2. Place checkpoint .pkl files in your `extensions\sd-webui-gan-generator\models` folder
+
+### UI
+
+The basic UI falls under `Simple Image Gen` tab and handles seed to image generation
+1. Under model selection, select your model from the drop down menu. Click refresh to update the model list
+2. Under generation device, select whether you want to use CPU or Nvidia GPU (cuda:0)
+3. Simple Image Gen is the basic generation page
+- Select your seed (integer from `0 to 2^32-1`)
+- Select your truncation psi (`0.7` is a good value to start with). See below for explanation.
+- Click `Generate Simple Image` to generate the image. Note this could take some time (slower on CPU). Check command window for status
+- You can also check `Random Seed` for random seed
+- If you are happy with the seed, you can send the seed to style mixing for further processing
+
+#### Style Mixing
+
+Simple Style Mixing features are included under the `Style Mixing` tab. Style mixing is the process of transferring elements from one image into another. See explanation for further information.
+1. Seeds imported from simple gen page, or input your Seed 1 and Seed 2 directly
+- Can also click `Pick Seeds For Me` to randomly pick both seed1 and seed2
+- Can click `Swap Seeds` to flip the values of Seed 1 and Seed 2.
+2. Select your truncation psi and transfer interpolation factor (see below for explanation)
+3. Select your method of style transfer in the drop-down menu (see below for explanation)
+4. Click `Generate Style Mixing`. The first two seeds and the mixed image should display.
 
 ## Parameters Explanation
 
-- **Start of the prompt**: As the name suggests, the start of the prompt that the generator should start with
-- **Temperature**: A higher temperature will produce more diverse results, but with a higher risk of less coherent text
-- **Top K**: Strategy is to sample from a shortlist of the top K tokens. This approach allows the other high-scoring tokens a chance of being picked.
-- **Max Length**: the maximum number of tokens for the output of the model
-- **Repetition Penalty**: The parameter for repetition penalty. 1.0 means no penalty. See [this paper](https://arxiv.org/pdf/1909.05858.pdf) for more details. Default setting is 1.2
-- **How Many To Generate**: The number of results to generate
-- **Use blacklist?**: Using `.\extensions\stable-diffusion-webui-Prompt_Generator\blacklist.txt`. It will delete any matches to the generated result (case insensitive). Each item to be filtered out should be on a new line. *Be aware that it simply deletes it and doesn't generate more to make up for the lost words*
-- **Use punctuation**: Allows the use of commas in the output
+- **Seed**: The input to create the latent vector. Each seed represents an image.
+- **Truncation psi**: How much to deviate from the average (1 = no truncation, 0 = average). Higher values will be more diverse but with worse quality.
+- **Transfer Interpolation Factor**: A slider
+- **Method of Style Transfer**: The type of style transfer to use. See below:
 
-## Models
-
-There are two 'default' models provided:
-
-### FredZhang7
-
-Made by [FredZhang7](https://huggingface.co/FredZhang7) under creativeml-openrail-m license. 
-
-Useful to get styles for a prompt. Eg: "A cat sitting" -> "A cat sitting on a chair, digital art. The room is made of clay and metal with the sun shining through in front trending at Artstation 4k uhd..."
-
-### MagicPrompt
-
-Made by [Gustavosta](https://huggingface.co/Gustavosta) under the MIT license. 
-
-Useful to get more natural language prompts. Eg: "A cat sitting" -> "A cat sitting in a chair, wearing pair of sunglasses"
-
-*Be aware that sometimes the model fails to produce anything or less than the wanted amount, either try again or use a new prompt in that case*
-
-## Install more models
-
-To install more model to use, ensure that the models are hosted on [huggingface.co](https://huggingface.co) and edit the json file at `.\extensions\stable-diffusion-webui-Prompt_Generator\models.json` with the relevant information. Use the models in the file as an example
-
-You might need to restart the extension/reload the UI if new items are added onto the list
+### Methods of Style Transfer
+The following use the Interpolation Factor
+- **Coarse**:
+- **Fine**:
+The following are independent of the Interpolation Factor
+- **Coarse_Average**:
+- **Fine_Average**:
+- **Total_Average**:
 
 ## Credits
-
-Credits to both [FredZhang7](https://huggingface.co/FredZhang7) and [Gustavosta](https://huggingface.co/Gustavosta)
+Please give credit to me `ZerxiesDerxies` if you plan to start using this.
+Credits to NVLabs and tocantrell. This is my first gradio project so apologies in advance for the mess.
