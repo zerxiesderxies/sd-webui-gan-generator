@@ -89,7 +89,7 @@ The `Style Mixing` tab include simple style mixing features. Style mixing is the
 - **Method of Style Transfer**: The type of style transfer to use. See example image diagram below:
 
 ### Methods of Style Transfer
-![StyleMixing](https://github.com/zerxiesderxies/sd-webui-gan-generator/assets/161509935/84c22b61-811a-41a7-a20f-f4aea1998003)  
+![Style Diagram](https://github.com/zerxiesderxies/sd-webui-gan-generator/assets/161509935/ec844593-817d-4ce2-86d8-ef24858ed755)
 The following methods use the Interpolation Factor.
 - **Coarse**: Coarse styles are layers 0-6. Coarse styles govern high-level features such as the subject's pose of in the image or the subject's hair.
 - **Fine**: Fine styles are layers 7-14. Fine styles cover the fine details in the image such as color of the eyes or other microstructures.
