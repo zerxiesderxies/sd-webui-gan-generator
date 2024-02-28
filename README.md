@@ -1,60 +1,106 @@
-# Prompt Generator
+# Simple StyleGAN3 (and StyleGAN2) Generator Extension
 
-Adds a tab to the webui that allows the user to generate a prompt from a small base prompt. Based on [FredZhang7/distilgpt2-stable-diffusion-v2](https://huggingface.co/FredZhang7/distilgpt2-stable-diffusion-v2) and [Gustavosta/MagicPrompt-Stable-Diffusion](https://huggingface.co/Gustavosta/MagicPrompt-Stable-Diffusion). I did nothing apart from porting it to [AUTOMATIC1111 WebUI](https://github.com/AUTOMATIC1111/stable-diffusion-webui)
+Adds a tab to Stable Diffusion Webui that allows the user to generate images from locally downloaded StyleGAN2 or StyleGAN3 models. Created as a proof of concept and is in very early stages. This extension also provides style mixing capabilities.  
+NOTE: Tested only on Windows.  
+Based on [NVlabs/stylegan3](https://github.com/NVlabs/stylegan3) with style mixing help from [tocantrell/stylegan3-fun-pipeline](https://github.com/tocantrell/stylegan3-fun-pipeline/)
 
+## Features!
 
+### Benefits of StyleGAN 
+- Say goodbye to same face; StyleGAN models are capable of generating over 4 billion diverse and highly detailed images.
+- Very fast. Can generate new images in tenths of a second on GPU.
+- Cohesive and Smooth Latent Space: Can easily interpolate between faces, genders, animals, anything. Want to ask animal ffhq for the exact midpoint between a dog and a cat? StyleGAN can do that!
+- Other cool stylegan features like DragGan, Projection of Real Images, 100% Smooth Video Transitions between two images, and more.
 
-![Screenshot 2023-04-29 000027](https://user-images.githubusercontent.com/8998556/235261664-2c92689d-9915-4543-8d6a-57a8ecd0f484.png)
+### Features of sd-webui-gan-generator Extension
+- Simple gui tab for hosting any of your StyleGAN checkpoints and can generate images.
+- Style mixing between two seeds for even more customization.
+- Can easily randomize seed input. Can also let chance decide which seeds to style mix today.
+- Can combine this with stable diffusion's inpainting/outpainting or faceswap/IP Adapter to create consistent, realistic, fictional characters.
 
+## Prerequisites (GPU Only)
+
+### Visual Studio Build Tools - WINDOWS
+
+1. Install Visual Studio 2022: This step is required to build some of the dependencies. You can use the Community version of Visual Studio 2022, which can be downloaded from the following link: https://visualstudio.microsoft.com/downloads/
+2. OR Install only the VS C++ Build Tools: If you don’t need the full Visual Studio suite, you can choose to install only the VS C++ Build Tools. During the installation process, select the option for “Desktop Development with C++” found under the “Workloads -> Desktop & Mobile” section. The VS C++ Build Tools can be downloaded from this link: https://visualstudio.microsoft.com/visual-cpp-build-tools/
+
+### Building Torch Util Libraries - WINDOWS
+
+1. Note: When running on GPU, the following libraries are built by torch_utils: `bias_act_plugin`, `upfirdn2d_plugin`, and `filtered_lrelu_plugin` (for StyleGAN2 models)
+2. The libraries require `python3XX.lib`. Because sd-webui installs into a venv, you will need to go to a locally installed Python similar to the version in sd-webui (e.g. 3.10) and manually copy the .lib yourself, as shown below:
+- Open command prompt and type `python`
+- `>>> import os, sys`
+- `>>> os.path.dirname(sys.executable)`
+- Navigate to indicated directory and look for the libs folder. Copy those files and create a libs folder in the sd-webui environment folder: `stable-diffusion-webui\venv\scripts\libs`
+- Alternatively you can add `Python\Python310\libs` to your system path variable
+
+Notes:
+- If you get a build failed, it mostly will be either due to missing library (e.g. python310.lib) or your cuda toolkit is not compatible with your GPU or pytorch installation.
 
 ## Installation
 
 1. Install [AUTOMATIC1111's Stable Diffusion Webui](https://github.com/AUTOMATIC1111/stable-diffusion-webui)
-2. Clone this repository into the `extensions` folder inside the webui
+2. Navigate to the `.\extensions` and click `Install from URL`
+3. Place `https://github.com/zerxiesderxies/sd-webui-gan-generator/` under `URL for extension's git repository` and Install  
+(Note you may need to manually add the directory name `sd-webui-gan-generator`)
 
 ## Usage
 
-1. Write in the prompt in the *Start of the prompt* text box
-2. Select which model you want to use
-3. Click Generate and wait
+**NOTE**: StyleGAN2/3 pretrained checkpoints (pickles) contain additional classes (e.g. torch_utils) that are not compatible with stable-diffusion-webui's pickle scanner. You will need to set `--disable-safe-unpickle` in order to load them.  
+TODO: Need Workaround  
+**WARNING**: Setting `--disable-safe-unpickle` turns off the safe pickle check and exposes sd-webui to malicious code hidden in pickle files. Use at your own risk. Please verify the integrity of your .pkl files before using.
 
-The initial use of the model may take longer as it needs to be downloaded to your machine for offline use. The model will be used on your device and will be stored in the default location of `*username*/.cache/huggingface/hub/models`. The entire process of generating results will be done on your local machine and not require internet access.
+### Downloading models
+
+1. Download any StyleGAN2 or StyleGAN3 model you prefer.
+- Recommend either `ffhq` or `celeba` pre-trained networks from NVlabs  
+[stylegan3 checkpoints here](https://catalog.ngc.nvidia.com/orgs/nvidia/teams/research/models/stylegan3)  
+[stylegan2 checkpoints here](https://catalog.ngc.nvidia.com/orgs/nvidia/teams/research/models/stylegan2)  
+2. Place the checkpoint .pkl files in your `extensions\sd-webui-gan-generator\models` folder
+
+### User Interface
+![MainPage](https://github.com/zerxiesderxies/sd-webui-gan-generator/assets/161509935/8143466c-3861-4535-b01b-eb3bf62eba98)  
+The `Simple Image Gen` tab handles basic seed to image generation.
+1. Under model selection, select your model from the drop down menu. Click refresh to update the model list.
+2. Under generation device, select whether you want to use your CPU `cpu` or Nvidia GPU `cuda:0`.
+3. How to Generate Image:
+- Select your seed (integer from `0 to 2^32-1`)
+- Select your truncation psi (`0.7` is a good value to start with).
+- Click `Generate Simple Image` to generate the image. Note this could take some time (slower on CPU). Check command window for status.
+- You can also check `Random Seed` for random seed.
+- If you are happy with the image, you can send the seed to style mixing for further processing.
+
+#### Style Mixing
+![StyleMixing](https://github.com/zerxiesderxies/sd-webui-gan-generator/assets/161509935/b934563f-dccf-4a28-b111-fe92a480f41b)  
+The `Style Mixing` tab include simple style mixing features. Style mixing is the process of transferring elements from one image into another. See explanation for further information.
+1. Seeds imported from simple gen page, or input your Seed 1 and Seed 2 directly
+- Can also click `Pick Seeds For Me` to randomly pick both seed1 and seed2
+- Can click `Swap Seeds` to flip the values of Seed 1 and Seed 2.
+2. Select your truncation psi and transfer interpolation factor.
+3. Select your method of style transfer in the drop-down menu.
+4. Click `Generate Style Mixing`. You should see three images being generated: the first two seeds and the mixed image.
 
 ## Parameters Explanation
 
-- **Start of the prompt**: As the name suggests, the start of the prompt that the generator should start with
-- **Temperature**: A higher temperature will produce more diverse results, but with a higher risk of less coherent text
-- **Top K**: Strategy is to sample from a shortlist of the top K tokens. This approach allows the other high-scoring tokens a chance of being picked.
-- **Max Length**: the maximum number of tokens for the output of the model
-- **Repetition Penalty**: The parameter for repetition penalty. 1.0 means no penalty. See [this paper](https://arxiv.org/pdf/1909.05858.pdf) for more details. Default setting is 1.2
-- **How Many To Generate**: The number of results to generate
-- **Use blacklist?**: Using `.\extensions\stable-diffusion-webui-Prompt_Generator\blacklist.txt`. It will delete any matches to the generated result (case insensitive). Each item to be filtered out should be on a new line. *Be aware that it simply deletes it and doesn't generate more to make up for the lost words*
-- **Use punctuation**: Allows the use of commas in the output
+- **Seed**: Integer input to create the latent vector. Each seed represents an image. Range of 32-bit unsigned integer (`0 to 2^32-1`).
+- **Truncation psi**: A float that represents how much to deviate from the global average (1 = no truncation, 0 = global average). Higher values will be more diverse but with worse quality. 
+- **Transfer Interpolation Factor**: A float slider used in style mixing that represents how far to settle inside the latent space between two images. A value of 0.0 will be closer to seed 2, and 2.0 will be closer to seed 1.
+- **Method of Style Transfer**: The type of style transfer to use. See example image diagram below:
 
-## Models
+### Methods of Style Transfer
+![Style Diagram](https://github.com/zerxiesderxies/sd-webui-gan-generator/assets/161509935/ec844593-817d-4ce2-86d8-ef24858ed755)
+The following methods use the Interpolation Factor.
+- **Coarse**: Coarse styles are layers 0-6. Coarse styles govern high-level features such as the subject's pose of in the image or the subject's hair.
+- **Fine**: Fine styles are layers 7-14. Fine styles cover the fine details in the image such as color of the eyes or other microstructures.
+- I like to think of it like this: If you want to change large aspects of the image's subject, like face shape, hairstyle, but keep the detailed composition like eyebrows, nose, eye colors, and skin tone, use coarse.
+- If you want to keep the subject's pose and shape exactly the same but change the background color or filter, use fine.   
 
-There are two 'default' models provided:
-
-### FredZhang7
-
-Made by [FredZhang7](https://huggingface.co/FredZhang7) under creativeml-openrail-m license. 
-
-Useful to get styles for a prompt. Eg: "A cat sitting" -> "A cat sitting on a chair, digital art. The room is made of clay and metal with the sun shining through in front trending at Artstation 4k uhd..."
-
-### MagicPrompt
-
-Made by [Gustavosta](https://huggingface.co/Gustavosta) under the MIT license. 
-
-Useful to get more natural language prompts. Eg: "A cat sitting" -> "A cat sitting in a chair, wearing pair of sunglasses"
-
-*Be aware that sometimes the model fails to produce anything or less than the wanted amount, either try again or use a new prompt in that case*
-
-## Install more models
-
-To install more model to use, ensure that the models are hosted on [huggingface.co](https://huggingface.co) and edit the json file at `.\extensions\stable-diffusion-webui-Prompt_Generator\models.json` with the relevant information. Use the models in the file as an example
-
-You might need to restart the extension/reload the UI if new items are added onto the list
+The following are independent of the Interpolation Factor.
+- **Coarse_Average**: Generates an image with the average midpoint between Seed1 and Seed2 within the coarse layers.
+- **Fine_Average**: Generates an image with the average midpoint between Seed1 and Seed2 within the fine layers.
+- **Total_Average**: Generates an image with the total midpoint between Seed1 and Seed2 within all layers. Represents the true midpoint between the images.
 
 ## Credits
-
-Credits to both [FredZhang7](https://huggingface.co/FredZhang7) and [Gustavosta](https://huggingface.co/Gustavosta)
+Please give credit to `ZerxiesDerxies` if you end up using this.
+Credits to `NVLabs` and `tocantrell`. This is my first gradio project and a beginner in ML/AI, so take this with a grain of salt.

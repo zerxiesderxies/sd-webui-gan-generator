@@ -97,7 +97,7 @@ def on_ui_tabs():
                                         2,
                                         step=0.05,
                                         value=1.0,
-                                        label='Super transfer interpolation (0 = most like seed 2)')  
+                                        label='Style transfer interpolation (0 = most like seed 2)')  
                                         
                         styleDrop = gr.Dropdown(
                                     choices=["coarse", "fine", "fine_average", "coarse_average", "total_average"], label="Method of Style Transfer", info="Select which type of style transfer you want!", value="coarse"
