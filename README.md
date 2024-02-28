@@ -95,6 +95,7 @@ The following methods use the Interpolation Factor.
 - **Fine**: Fine styles are layers 7-14. Fine styles cover the fine details in the image such as color of the eyes or other microstructures.
 - I like to think of it like this: If you want to change large aspects of the image's subject, like face shape, hairstyle, but keep the detailed composition like eyebrows, nose, eye colors, and skin tone, use coarse.
 - If you want to keep the subject's pose and shape exactly the same but change the background color or filter, use fine.   
+
 The following are independent of the Interpolation Factor.
 - **Coarse_Average**: Generates an image with the average midpoint between Seed1 and Seed2 within the coarse layers.
 - **Fine_Average**: Generates an image with the average midpoint between Seed1 and Seed2 within the fine layers.
