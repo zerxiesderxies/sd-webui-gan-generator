@@ -2,7 +2,7 @@
 
 Adds a tab to Stable Diffusion Webui that allows the user to generate images from locally downloaded StyleGAN2 or StyleGAN3 models. Created as a proof of concept and is in very early stages. This extension also provides style mixing capabilities.  
 NOTE: Tested only on Windows.  
-Based on [NVlabs/stylegan3](https://https://github.com/NVlabs/stylegan3) with style mixing help from [tocantrell/stylegan3-fun-pipeline](https://github.com/tocantrell/stylegan3-fun-pipeline/)
+Based on [NVlabs/stylegan3](https://github.com/NVlabs/stylegan3) with style mixing help from [tocantrell/stylegan3-fun-pipeline](https://github.com/tocantrell/stylegan3-fun-pipeline/)
 
 ## Features!
 
