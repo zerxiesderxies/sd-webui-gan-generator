@@ -60,7 +60,7 @@ TODO: Need Workaround
 2. Place the checkpoint .pkl files in your `extensions\sd-webui-gan-generator\models` folder
 
 ### User Interface
-
+![MainPage](https://github.com/zerxiesderxies/sd-webui-gan-generator/assets/161509935/8143466c-3861-4535-b01b-eb3bf62eba98)  
 The `Simple Image Gen` tab handles basic seed to image generation.
 1. Under model selection, select your model from the drop down menu. Click refresh to update the model list.
 2. Under generation device, select whether you want to use your CPU `cpu` or Nvidia GPU `cuda:0`.
@@ -72,7 +72,7 @@ The `Simple Image Gen` tab handles basic seed to image generation.
 - If you are happy with the image, you can send the seed to style mixing for further processing.
 
 #### Style Mixing
-
+![StyleMixing](https://github.com/zerxiesderxies/sd-webui-gan-generator/assets/161509935/b934563f-dccf-4a28-b111-fe92a480f41b)  
 The `Style Mixing` tab include simple style mixing features. Style mixing is the process of transferring elements from one image into another. See explanation for further information.
 1. Seeds imported from simple gen page, or input your Seed 1 and Seed 2 directly
 - Can also click `Pick Seeds For Me` to randomly pick both seed1 and seed2
@@ -89,6 +89,7 @@ The `Style Mixing` tab include simple style mixing features. Style mixing is the
 - **Method of Style Transfer**: The type of style transfer to use. See example image diagram below:
 
 ### Methods of Style Transfer
+![StyleMixing](https://github.com/zerxiesderxies/sd-webui-gan-generator/assets/161509935/84c22b61-811a-41a7-a20f-f4aea1998003)  
 The following methods use the Interpolation Factor.
 - **Coarse**: Coarse styles are layers 0-6. Coarse styles govern high-level features such as the subject's pose of in the image or the subject's hair.
 - **Fine**: Fine styles are layers 7-14. Fine styles cover the fine details in the image such as color of the eyes or other microstructures.
