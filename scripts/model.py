@@ -18,9 +18,7 @@ class Model:
         self.G = None
 
     def _load_model(self, model_name: str) -> nn.Module:
-        file_name = model_name
-        currentfile = os.path.dirname(__file__)
-        path = currentfile + '\\..\\models\\' + file_name
+        path = pathlib.Path(__file__).resolve().parents[1] / 'models' / model_name 
         
         # WARNING: Verify StyleGAN3 checkpoints before loading.
         # Safety check needs to be disabled because required classes

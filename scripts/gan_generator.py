@@ -1,6 +1,7 @@
 import modules.scripts as scripts
 import gradio as gr
-import glob, os
+from glob import glob
+from pathlib import Path
 
 from modules import script_callbacks
 import json
@@ -31,9 +32,8 @@ def send_style(slider1):
     return slider1
 
 def update_model_list():
-    currentfile = os.path.dirname(__file__)
-    path = currentfile + '\\..\\models\\'    
-    return [os.path.basename(file) for file in glob.glob(path+"*.pkl")]
+    path = Path(__file__).resolve().parents[1] / "models"
+    return [Path(file).name for file in glob(str(path / "*.pkl"))]
     
 def update_model_drop():
     new_choices = gr.Dropdown.update(choices = update_model_list())
