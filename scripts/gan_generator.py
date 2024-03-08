@@ -116,12 +116,15 @@ def on_ui_tabs():
                                     choices=["coarse", "fine", "fine_average", "coarse_average", "total_average"], label="Method of Style Transfer", info="Select which type of style transfer you want!", value="coarse"
                                         ),                                        
                         style_run_button = gr.Button('Generate Style Mixing')
+                with gr.Row():
                     with gr.Column():
                         seed1im = gr.Image(label='Seed 1 Image', elem_id='seed1')
                         seed1txt = gr.Markdown(label='Seed 1', value="")
+                    with gr.Column():
+                        styleim = gr.Image(label='Style Mixed Image', elem_id='style')
+                    with gr.Column():
                         seed2im = gr.Image(label='Seed 2 Image', elem_id='seed2')
                         seed2txt = gr.Markdown(label='Seed 2', value="")
-                        styleim = gr.Image(label='Style Mixed Image', elem_id='style')
         model_refresh_button.click(fn=update_model_drop,inputs=[],outputs=[modelDrop])
         simple_run_button.click(fn=model.set_model_and_generate_image,
                          inputs=[deviceDrop, modelDrop,seed,
