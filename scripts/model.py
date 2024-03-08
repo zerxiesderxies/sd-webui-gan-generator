@@ -49,11 +49,15 @@ class Model:
         synth_image = (synth_image.permute(0, 2, 3, 1) * 127.5 + 128).clamp(0, 255).to(torch.uint8)
         return synth_image.cpu().numpy()
 
-    def get_w_from_seed(self, seed: int, truncation_psi: float) -> torch.Tensor:
-        """Get the dlatent from a random seed, using the truncation trick (this could be optional)"""
+    def random_z_dim(self, seed) -> np.ndarray:
         z = np.random.RandomState(seed).randn(1, self.G.z_dim) 
         if self.device == 'mps':
             z = torch.tensor(z).float().cpu().numpy() # convert to float32 for mac
+        return z
+
+    def get_w_from_seed(self, seed: int, truncation_psi: float) -> torch.Tensor:
+        """Get the dlatent from a random seed, using the truncation trick (this could be optional)"""
+        z = self.random_z_dim(seed)
         w = self.G.mapping(torch.from_numpy(z).to(self.device), None)
         w_avg = self.G.mapping.w_avg
         w = w_avg + (w - w_avg) * truncation_psi
@@ -111,12 +115,12 @@ class Model:
         w_avg = self.G.mapping.w_avg
         w_list = []
 
-        z = np.random.RandomState(seed1).randn(1, self.G.z_dim)
+        z = self.random_z_dim(seed1)
         w = self.G.mapping(torch.from_numpy(z).to(self.device), None)
         w = w_avg + (w - w_avg) * truncation_psi
         w_list.append(w)
         
-        z = np.random.RandomState(seed2).randn(1, self.G.z_dim)
+        z = self.random_z_dim(seed2)
         w = self.G.mapping(torch.from_numpy(z).to(self.device), None)
         w = w_avg + (w - w_avg) * truncation_psi
         w_list.append(w)
