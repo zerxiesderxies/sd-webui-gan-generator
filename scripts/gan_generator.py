@@ -11,6 +11,7 @@ import numpy as np
 
 from scripts.model import Model
 
+import torch
 
 model = Model()
 
@@ -34,17 +35,29 @@ def send_style(slider1):
 def update_model_list():
     path = Path(__file__).resolve().parents[1] / "models"
     return [Path(file).name for file in glob(str(path / "*.pkl"))]
-    
+
+def default_model():
+    return update_model_list()[0] if update_model_list() else None
+
 def update_model_drop():
     new_choices = gr.Dropdown.update(choices = update_model_list())
     return new_choices
+
+def default_device():
+    if torch.backends.mps.is_available():
+        default_device = "mps"
+    elif torch.cuda.is_available():
+        default_device = "cuda:0"
+    else:
+        default_device = "cpu"
+    return default_device
 
 def on_ui_tabs():
     with gr.Blocks(analytics_enabled=False, css='style.css') as ui_component:
         gr.Markdown(DESCRIPTION)
         with gr.Column():
-            modelDrop = gr.Dropdown(choices = update_model_list(), label="Model Selection", info="Place into models directory")            
-            model_refresh_button = gr.Button('Refresh')
+            modelDrop = gr.Dropdown(choices = update_model_list(), value=default_model, label="Model Selection", info="Place into models directory")            
+            model_refresh_button = gr.Button('Refresh')    
             deviceDrop = gr.Dropdown(choices = ['cpu','cuda:0','mps'], value=default_device, label='Generation Device', info='Generate using CPU or GPU')
                                 
         with gr.Tabs():
