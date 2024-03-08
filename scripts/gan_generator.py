@@ -45,7 +45,7 @@ def on_ui_tabs():
         with gr.Column():
             modelDrop = gr.Dropdown(choices = update_model_list(), label="Model Selection", info="Place into models directory")            
             model_refresh_button = gr.Button('Refresh')
-            deviceDrop = gr.Dropdown(choices = ['cpu','cuda:0'], value='cpu', label='Generation Device', info='Generate using CPU or GPU')
+            deviceDrop = gr.Dropdown(choices = ['cpu','cuda:0','mps'], value=default_device, label='Generation Device', info='Generate using CPU or GPU')
                                 
         with gr.Tabs():
             with gr.TabItem('Simple Image Gen'):

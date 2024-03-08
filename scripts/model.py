@@ -51,7 +51,9 @@ class Model:
 
     def get_w_from_seed(self, seed: int, truncation_psi: float) -> torch.Tensor:
         """Get the dlatent from a random seed, using the truncation trick (this could be optional)"""
-        z = np.random.RandomState(seed).randn(1, self.G.z_dim)
+        z = np.random.RandomState(seed).randn(1, self.G.z_dim) 
+        if self.device == 'mps':
+            z = torch.tensor(z).float().cpu().numpy() # convert to float32 for mac
         w = self.G.mapping(torch.from_numpy(z).to(self.device), None)
         w_avg = self.G.mapping.w_avg
         w = w_avg + (w - w_avg) * truncation_psi
