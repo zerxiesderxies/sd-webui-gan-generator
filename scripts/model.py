@@ -16,6 +16,9 @@ from modules.images import save_image_with_geninfo
 from modules.paths_internal import default_output_dir
 from PIL import Image
 
+def newSeed() -> int:
+    return random.randint(0, 0xFFFFFFFF - 1)
+
 def xfade(a,b,x):
     return a*(1.0-x) + b*x
 
@@ -114,7 +117,7 @@ class Model:
         return self.outputRoot / ".".join(self.model_name.split(".")[:-1])
 
     def generate_image(self, seed: int, psi: float, save: bool=True) -> np.ndarray:
-        filename = f"{seed}-{psi}.{self.img_format}"
+        filename = f"base-{seed}-{psi}.{self.img_format}"
         path = self.output_path() / filename
         if path.exists():
             return Image.open(path)
@@ -137,7 +140,7 @@ class Model:
         self.set_device(device)
         self.set_model(model_name)
         if seed == -1:
-            seed = random.randint(0, 0xFFFFFFFF - 1)        
+            seed = newSeed()
         seedTxt = 'Seed: ' + str(seed)
         return self.generate_image(seed, psi), seedTxt
         
@@ -147,11 +150,11 @@ class Model:
         self.set_model(model_name)
 
         if seed1 == -1:
-            seed1 = random.randint(0, 0xFFFFFFFF - 1)        
+            seed1 = newSeed()
         img1 = self.generate_image(seed1, psi)
 
         if seed2 == -1:
-            seed2 = random.randint(0, 0xFFFFFFFF - 1)        
+            seed2 = newSeed()
         img2 = self.generate_image(seed2, psi)
 
         w_avg = self.G.mapping.w_avg
@@ -184,9 +187,9 @@ class Model:
         # print(f"mixing w/ style: {interpType}, i: {i}")
      
         img3 = self.w_to_img(w_base)[0]
-        filename = f"{seed1}-{seed2}-{mix}-{interpType}.{self.img_format}"
-        save_output_to_file(img3, filename, params={'seed1': seed1, 'seed2': seed2, 'mix': mix, 'interp': interpType})
-
+        filename = f"mix-{seed1}-{seed2}-{mix}-{interpType}.{self.img_format}"
+        self.save_output_to_file(img3, filename, params={'seed1': seed1, 'seed2': seed2, 'mix': mix, 'interp': interpType})
+        
         seedTxt1 = 'Seed 1: ' + str(seed1)
         seedTxt2 = 'Seed 2: ' + str(seed2)
         return img1, img2, img3, seedTxt1, seedTxt2

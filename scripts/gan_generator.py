@@ -1,3 +1,4 @@
+from typing import Union
 import modules.scripts as scripts
 import gradio as gr
 from glob import glob
@@ -10,7 +11,7 @@ import re
 import gradio as gr
 import numpy as np
 
-from scripts.model import Model
+from scripts.model import Model, newSeed 
 
 import torch
 import random
@@ -18,6 +19,7 @@ import random
 from modules import ui
 from modules.ui_components import ToolButton
 ui.swap_symbol = "\U00002194"  # ↔️
+ui.lucky_symbol = "\U0001F340"  # 🍀
 
 model = Model()
 
@@ -29,27 +31,21 @@ Supports generation with the cpu or gpu0. See available pretrained networks via 
 Recommend using stylegan3-r-ffhq or stylegan2-celebahq
 '''
 
-def str2num(string):
-    match = re.search(r'(\d+)', string)
-    if match:
-        number = int(match.group())
-        return number
-    else:
-        return None
+def str2num(string) -> Union[int, None]:
+    match = re.search(r'(\d+)$', string)
+    return int(match.group()) if match else None
 
-def copy_seed(seedTxt):
-    number = str2num(seedTxt)
-    if number is not None:
-        return number
+def copy_seed(seedTxt) -> Union[int, None]:
+    return str2num(seedTxt)
 
-def update_model_list():
+def update_model_list() -> tuple[str]:
     path = Path(__file__).resolve().parents[1] / "models"
     return [Path(file).name for file in glob(str(path / "*.pkl"))]
 
-def default_model():
+def default_model() -> Union[str, None]:
     return update_model_list()[0] if update_model_list() else None
 
-def default_device():
+def default_device() -> str:
     if torch.backends.mps.is_available():
         default_device = "mps"
     elif torch.cuda.is_available():
@@ -92,21 +88,21 @@ def on_ui_tabs():
 
             with gr.TabItem('Seed Mixer'):
                 with gr.Row():
-                    mix_seedNum1 = gr.Number(label='Seed 1', value=-1, min_width=150, precision=0)
+                    mix_seed1_Num = gr.Number(label='Seed 1', value=-1, min_width=150, precision=0)
 
+                    mix_seed1_luckyButton = ToolButton(ui.lucky_symbol, tooltip="Roll generate a new seed")
+                    mix_seed1_luckyButton.click(fn=lambda: mix_seed1_Num.update(value=newSeed()), show_progress=False, inputs=[], outputs=[mix_seed1_Num])
                     mix_seed1_randButton = ToolButton(ui.random_symbol, tooltip="Set seed to -1, which will cause a new random number to be used every time")
-                    mix_seed1_randButton.click(fn=lambda: mix_seedNum1.update(value=-1), show_progress=False, inputs=[], outputs=[mix_seedNum1])
-
+                    mix_seed1_randButton.click(fn=lambda: mix_seed1_Num.update(value=-1), show_progress=False, inputs=[], outputs=[mix_seed1_Num])
                     mix_seed1_recycleButton = ToolButton(ui.reuse_symbol, tooltip="Reuse seed from last generation")
-                    mix_seed1_recycleButton.click(fn=copy_seed,show_progress=False,inputs=[seedTxt],outputs=[seedNum])
 
-                    mix_seedNum2 = gr.Number(label='Seed 2', value=-1, min_width=150, precision=0)
+                    mix_seed2_Num = gr.Number(label='Seed 2', value=-1, min_width=150, precision=0)
 
+                    mix_seed2_luckyButton = ToolButton(ui.lucky_symbol, tooltip="Roll generate a new seed")
+                    mix_seed2_luckyButton.click(fn=lambda: mix_seed2_Num.update(value=newSeed()), show_progress=False, inputs=[], outputs=[mix_seed2_Num])
                     mix_seed2_randButton = ToolButton(ui.random_symbol, tooltip="Set seed to -1, which will cause a new random number to be used every time")
-                    mix_seed2_randButton.click(fn=lambda: mix_seedNum2.update(value=-1), show_progress=False, inputs=[], outputs=[mix_seedNum2])
-
+                    mix_seed2_randButton.click(fn=lambda: mix_seed2_Num.update(value=-1), show_progress=False, inputs=[], outputs=[mix_seed2_Num])
                     mix_seed2_recycleButton = ToolButton(ui.reuse_symbol, tooltip="Reuse seed from last generation")
-                    mix_seed2_recycleButton.click(fn=copy_seed,show_progress=False,inputs=[seedTxt],outputs=[seedNum])
 
                 mix_psiSlider = gr.Slider(0,2,
                                 step=0.05,
@@ -125,23 +121,29 @@ def on_ui_tabs():
 
                 with gr.Row():
                     with gr.Column():
-                        seedImg1 = gr.Image(label='Seed 1 Image')
-                        seedTxt1 = gr.Markdown(label='Seed 1', value="")
+                        mix_seed1_Img = gr.Image(label='Seed 1 Image')
+                        mix_seed1_Txt = gr.Markdown(label='Seed 1', value="")
                     with gr.Column():
-                        styleImg = gr.Image(label='Style Mixed Image')
+                        mix_styleImg = gr.Image(label='Style Mixed Image')
                     with gr.Column():
-                        seedImg2 = gr.Image(label='Seed 2 Image')
-                        seedTxt2 = gr.Markdown(label='Seed 2', value="")
+                        mix_seed2_Img = gr.Image(label='Seed 2 Image')
+                        mix_seed2_Txt = gr.Markdown(label='Seed 2', value="")
+
+        seed_recycleButton.click(fn=copy_seed,show_progress=False,inputs=[seedTxt],outputs=[seedNum])
+
         simple_runButton.click(fn=model.set_model_and_generate_image,
                          inputs=[deviceDrop, modelDrop, seedNum, psiSlider],
                          outputs=[resultImg, seedTxt])
-        seed1_to_mixButton.click(fn=copy_seed, inputs=[seedTxt],outputs=[mix_seedNum1])
-        seed2_to_mixButton.click(fn=copy_seed, inputs=[seedTxt],outputs=[mix_seedNum2])
+
+        seed1_to_mixButton.click(fn=copy_seed, inputs=[seedTxt],outputs=[mix_seed1_Num])
+        seed2_to_mixButton.click(fn=copy_seed, inputs=[seedTxt],outputs=[mix_seed2_Num])
+
+        mix_seed1_recycleButton.click(fn=copy_seed,show_progress=False,inputs=[mix_seed1_Txt],outputs=[mix_seed1_Num])
+        mix_seed2_recycleButton.click(fn=copy_seed,show_progress=False,inputs=[mix_seed2_Txt],outputs=[mix_seed2_Num])
 
         mix_runButton.click(fn=model.set_model_and_generate_styles,
-                         inputs=[deviceDrop, modelDrop, mix_seedNum1, mix_seedNum2, mix_psiSlider, mix_interp_styleDrop[0], mix_mixSlider],
-                         outputs=[seedImg1, seedImg2, styleImg, seedTxt1, seedTxt2])
-        seed_recycleButton.click(fn=copy_seed,show_progress=False,inputs=[seedTxt],outputs=[seedNum])
+                         inputs=[deviceDrop, modelDrop, mix_seed1_Num, mix_seed2_Num, mix_psiSlider, mix_interp_styleDrop[0], mix_mixSlider],
+                         outputs=[mix_seed1_Img, mix_seed2_Img, mix_styleImg, mix_seed1_Txt, mix_seed2_Txt])
 
         return [(ui_component, "GAN Generator", "gan_generator_tab")]
 
@@ -154,7 +156,7 @@ def on_ui_settings():
     # global_state.is_enabled = shared.opts.data.get('neutral_prompt_enabled', True)
 
 
-    # shared.opts.add_option('gan3_generator_output_type', shared.OptionInfo(["jpg","png"], 'File format to output', section=section))
+    # shared.opts.add_option('gan_generator_output_type', shared.OptionInfo(["jpg","png"], 'File format to output', section=section))
 
     # "cross_attention_optimization": OptionInfo("Automatic", "Cross attention optimization", gr.Dropdown, lambda: {"choices": shared_items.cross_attention_optimizations()}),
     # shared.opts.onchange('neutral_prompt_verbose', update_verbose)
