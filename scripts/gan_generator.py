@@ -17,6 +17,7 @@ import random
 
 from modules import ui
 from modules.ui_components import ToolButton
+ui.swap_symbol = "\U00002194"  # ↔️
 
 model = Model()
 
@@ -33,8 +34,18 @@ def swap_slider(slider1, slider2):
 def random_seeds(slider1, slider2):
     return random.randint(0, 0xFFFFFFFF - 1), random.randint(0, 0xFFFFFFFF - 1) 
     
-def send_style(slider1):
-    return slider1
+def str2num(string):
+    match = re.search(r'(\d+)', string)
+    if match:
+        number = int(match.group())
+        return number
+    else:
+        return None
+
+def copy_seed(outputSeed):
+    number = str2num(outputSeed)
+    if number is not None:
+        return number
 
 def update_model_list():
     path = Path(__file__).resolve().parents[1] / "models"
@@ -74,15 +85,12 @@ def on_ui_tabs():
                                         value=0.7,
                                         label='Truncation psi')
                         with gr.Row():
-                            seed = gr.Number(label='Seed', value=-1, min_width=150, precision=0, elem_id="gan_seed")
+                            seed = gr.Number(label='Seed', value=-1, min_width=150, precision=0)
                             random_seed = ToolButton(ui.random_symbol, tooltip="Set seed to -1, which will cause a new random number to be used every time")
                             random_seed.click(fn=lambda: seed.update(value=-1), show_progress=False, inputs=[], outputs=[seed])
                             reuse_seed = ToolButton(ui.reuse_symbol, tooltip="Reuse seed from last generation, mostly useful if it was randomized")
  
-                       # with gr.Row():
-                        #     randomSeed = gr.Checkbox(value=False, label='Random Seed')
                         outputSeed = gr.Markdown(label='Output Seed')
-                        
                         simple_run_button = gr.Button('Generate Simple Image')
 
                     with gr.Column():
@@ -90,41 +98,31 @@ def on_ui_tabs():
                         outputSeed = gr.Markdown(label='Output Seed')
                         with gr.Row():
                             send_to_style_button1 = gr.Button('Send Seed to Style Seed1')
-
                             send_to_style_button2 = gr.Button('Send Seed to Style Seed2')
 
             with gr.TabItem('Style Mixing'):
                 with gr.Row():
-                    with gr.Column():
-                        seed1 = gr.Slider(0,
-                                         np.iinfo(np.uint32).max,
-                                         step=1,
-                                         value=0,
-                                         label='Seed 1')
-                        seed2 = gr.Slider(0,
-                                         np.iinfo(np.uint32).max,
-                                         step=1,
-                                         value=0,
-                                         label='Seed 2')
-                        with gr.Row():
-                            swap_seed_button = gr.Button('Swap Seeds')
-                            random_seeds_button = gr.Button('Pick Seeds For Me')
+                    seed1 = gr.Number(label='Seed 1', value=0, min_width=150, precision=0)
+                    seed2 = gr.Number(label='Seed 2', value=0, min_width=150, precision=0)
+                    swap_seed_button = ToolButton(value=ui.swap_symbol, tooltip="Swap Seeds", show_progress=False)
+                    random_seeds_button = ToolButton(ui.random_symbol, tooltip="Pick Seeds For Me", show_progress=False)
 
-                        psi_style = gr.Slider(0,
-                                        2,
-                                        step=0.05,
-                                        value=0.7,
-                                        label='Truncation psi')  
-                        style_interp = gr.Slider(0,
-                                        2,
-                                        step=0.05,
-                                        value=1.0,
-                                        label='Style transfer interpolation (0 = most like seed 2)')  
-                                        
-                        styleDrop = gr.Dropdown(
-                                    choices=["coarse", "fine", "fine_average", "coarse_average", "total_average"], label="Method of Style Transfer", info="Select which type of style transfer you want!", value="coarse"
-                                        ),                                        
-                        style_run_button = gr.Button('Generate Style Mixing')
+                psi_style = gr.Slider(0,
+                                2,
+                                step=0.05,
+                                value=0.7,
+                                label='Truncation psi')  
+                with gr.Row():
+                    styleDrop = gr.Dropdown(
+                                choices=["coarse", "fine", "fine_average", "coarse_average", "total_average"], label="Method of Style Transfer", value="coarse"
+                                    ),                                        
+                    style_interp = gr.Slider(0,
+                                    2,
+                                    step=0.05,
+                                    value=1.0,
+                                    label='Style transfer interpolation (0 = most like seed 2)')  
+                                    
+                    style_run_button = gr.Button('Generate Style Mixing')
 
                 with gr.Row():
                     with gr.Column():
@@ -145,24 +143,9 @@ def on_ui_tabs():
                          outputs=[seed1im, seed2im, styleim, seed1txt, seed2txt])
         swap_seed_button.click(fn=swap_slider, inputs=[seed1, seed2], outputs=[seed1,seed2])
         random_seeds_button.click(fn=random_seeds, inputs=[seed1,seed2], outputs=[seed1,seed2])
-        send_to_style_button1.click(fn=send_style, inputs=[seed],outputs=[seed1])
-        send_to_style_button2.click(fn=send_style, inputs=[seed],outputs=[seed2])
-
-        def str2num(string):
-            match = re.search(r'(\d+)', string)
-            if match:
-                number = int(match.group())
-                return number
-            else:
-                return None
-
-        def copy_seed(outputSeed):
-            number = str2num(outputSeed)
-            if number is not None:
-                return number
-
+        send_to_style_button1.click(fn=copy_seed, inputs=[outputSeed],outputs=[seed1])
+        send_to_style_button2.click(fn=copy_seed, inputs=[outputSeed],outputs=[seed2])
         reuse_seed.click(fn=copy_seed,show_progress=False,inputs=[outputSeed],outputs=[seed])
-
 
         return [(ui_component, "GAN Generator", "gan_generator_tab")]
 
