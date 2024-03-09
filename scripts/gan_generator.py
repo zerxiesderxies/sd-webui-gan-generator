@@ -97,8 +97,8 @@ def on_ui_tabs():
                         result = gr.Image(label='Result', elem_id='result')
                         outputSeed = gr.Markdown(label='Output Seed')
                         with gr.Row():
-                            send_to_style_button1 = gr.Button('Send Seed to Style Mixer Left')
-                            send_to_style_button2 = gr.Button('Send Seed to Style Mixer Right')
+                            send_to_style_button1 = gr.Button('Send Seed to Style Mixer : Left')
+                            send_to_style_button2 = gr.Button('Send Seed to Style Mixer : Right')
 
             with gr.TabItem('Style Mixer'):
                 with gr.Row():
@@ -116,9 +116,9 @@ def on_ui_tabs():
                                 choices=["coarse", "fine", "total"], label="Style Transfer Method", value="coarse"
                                     ),                                        
                     style_interp = gr.Slider(0,
-                                    1,
+                                    2,
                                     step=0.01,
-                                    value=0.5,
+                                    value=1.0,
                                     label='Seed Interpolation (Cross-Fade)')
                                     
                     style_run_button = gr.Button('Generate Style Mix')

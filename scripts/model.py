@@ -113,7 +113,6 @@ class Model:
         self.set_model(model_name)
         im1 = self.generate_image(seed1, truncation_psi)
         im2 = self.generate_image(seed2, truncation_psi)
-        
         w_avg = self.G.mapping.w_avg
         w_list = []
 
@@ -127,15 +126,22 @@ class Model:
         w = w_avg + (w - w_avg) * truncation_psi
         w_list.append(w)
 
-        w_base = w_list[0].clone()
 
-        if styleDrop == "fine":
-            w_base[:,8:,:] = xfade(w_base[:,8:,:], w_list[1][:,8:,:], style_interp)
-        elif styleDrop == "coarse":
-            w_base[:,:7,:] = xfade(w_base[:,:7,:], w_list[1][:,:7,:], style_interp)
-        elif styleDrop == "total":
-            w_base = xfade(w_list[0], w_list[1], style_interp)
+        if styleDrop == "total":
+            i = style_interp / 2.0  # scaled between 0 and 1
+            w_base = xfade(w_list[0], w_list[1], i)
+        else:
+            i = style_interp # * 2.0 # input should be btwn 0 and 1, then we multiply by 2 to fit these calculations
+            if i > 1.0: # mirror across middle
+                w_list = w_list[::-1] # effectively swap the two seeds
+                i = 2.0 - i
+            w_base = w_list[0].clone()
+            if styleDrop == "fine":
+                w_base[:,8:,:] = xfade(w_base[:,8:,:], w_list[1][:,8:,:], i)
+            elif styleDrop == "coarse":
+                w_base[:,:7,:] = xfade(w_base[:,:7,:], w_list[1][:,:7,:], i)
 
+        # print(f"mixing w/ style: {styleDrop}, i: {i}")
      
         im3 = self.w_to_img(w_base)[0]
         
