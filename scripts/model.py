@@ -12,9 +12,22 @@ import torch.nn as nn
 import torch_utils
 import dnnlib
 
+from modules.images import save_image_with_geninfo
+from modules.paths_internal import default_output_dir
+from PIL import Image
+
 def xfade(a,b,x):
     return a*(1.0-x) + b*x
 
+def mkdir_p(path):
+    try:
+        os.makedirs(path)
+    except FileExistsError:
+        # If the directory already exists, it's okay
+        pass
+    except OSError as e:
+        # Handle other errors
+        print(f"Error creating directory: {e}")
 class Model:
     def __init__(self):
         self.device = None
@@ -93,11 +106,20 @@ class Model:
         self.model_name = model_name
         self.G = self._load_model(model_name)
 
-    def generate_image(self, seed: int, psi: float) -> np.ndarray:
+    def generate_image(self, seed: int, psi: float, save: bool=True) -> np.ndarray:
         w = self.get_w_from_seed(seed, psi)
-        image = self.w_to_img(w)[0]
-        images.save_image_with_geninfo(image, seed, psi)
-        return image
+        output = self.w_to_img(w)[0]
+        info = { 'GAN-generator': {'seed': seed, 'psi': psi, 'model': self.model_name} }
+        filename = f"{self.model_name.replace('.pkl', '')}-{seed}-{psi}.jpg"
+        # filename = f"{seed}-{psi}.jpg"
+        # filename = os.path.join(default_output_dir(), "gan", self.model_name, filename)
+        path = os.path.join(default_output_dir, "gan-images")
+        mkdir_p(path)
+        filename = os.path.join(path, filename)
+        if not os.path.exists(filename):
+            image = Image.fromarray(output)
+            save_image_with_geninfo(image, str(info), filename )
+        return output
 
     def set_model_and_generate_image(self, device: str, model_name: str, seed: int,
                                      psi: float) -> np.ndarray:        

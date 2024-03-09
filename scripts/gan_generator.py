@@ -83,7 +83,7 @@ def on_ui_tabs():
                                         2,
                                         step=0.05,
                                         value=0.7,
-                                        label='Truncation psi')
+                                        label='Truncation (psi)')
                         with gr.Row():
                             seed = gr.Number(label='Seed', value=-1, min_width=150, precision=0)
                             random_seed = ToolButton(ui.random_symbol, tooltip="Set seed to -1, which will cause a new random number to be used every time")
