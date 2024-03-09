@@ -97,10 +97,10 @@ def on_ui_tabs():
                         result = gr.Image(label='Result', elem_id='result')
                         outputSeed = gr.Markdown(label='Output Seed')
                         with gr.Row():
-                            send_to_style_button1 = gr.Button('Send Seed to Style Seed1')
-                            send_to_style_button2 = gr.Button('Send Seed to Style Seed2')
+                            send_to_style_button1 = gr.Button('Send Seed to Style Mixer Left')
+                            send_to_style_button2 = gr.Button('Send Seed to Style Mixer Right')
 
-            with gr.TabItem('Style Mixing'):
+            with gr.TabItem('Style Mixer'):
                 with gr.Row():
                     seed1 = gr.Number(label='Seed 1', value=0, min_width=150, precision=0)
                     seed2 = gr.Number(label='Seed 2', value=0, min_width=150, precision=0)
@@ -113,15 +113,15 @@ def on_ui_tabs():
                                 label='Truncation psi')  
                 with gr.Row():
                     styleDrop = gr.Dropdown(
-                                choices=["coarse", "fine", "total"], label="Method of Style Transfer", value="coarse"
+                                choices=["coarse", "fine", "total"], label="Style Transfer Method", value="coarse"
                                     ),                                        
                     style_interp = gr.Slider(0,
                                     1,
                                     step=0.01,
                                     value=0.5,
-                                    label='Cross-Fade between seeds')  
+                                    label='Seed Interpolation (Cross-Fade)')
                                     
-                    style_run_button = gr.Button('Generate Style Mixing')
+                    style_run_button = gr.Button('Generate Style Mix')
 
                 with gr.Row():
                     with gr.Column():
