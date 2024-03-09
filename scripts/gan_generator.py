@@ -1,7 +1,8 @@
 from typing import Union
+from os import utime
 import modules.scripts as scripts
 import gradio as gr
-from glob import glob
+import glob
 from pathlib import Path
 
 from modules import script_callbacks, shared
@@ -38,12 +39,19 @@ def str2num(string) -> Union[int, None]:
 def copy_seed(seedTxt) -> Union[int, None]:
     return str2num(seedTxt)
 
+model_path = Path(__file__).resolve().parents[1] / "models"
+
 def update_model_list() -> tuple[str]:
-    path = Path(__file__).resolve().parents[1] / "models"
-    return [Path(file).name for file in glob(str(path / "*.pkl"))]
+    files = glob.glob(str(model_path / "*.pkl"))
+    return [Path(file).name for file in sorted(files, key=lambda file: (Path(file).stat().st_mtime, file), reverse=True)]
 
 def default_model() -> Union[str, None]:
     return update_model_list()[0] if update_model_list() else None
+
+def touch_model_file(modelDrop) -> None:
+    filename = str(model_path / modelDrop)
+    with open(filename, 'a'):
+        utime(filename, None)  # Update the modification timestamp
 
 def default_device() -> str:
     if torch.backends.mps.is_available():
@@ -59,10 +67,10 @@ def on_ui_tabs():
         gr.Markdown(DESCRIPTION)
         with gr.Row():
             modelDrop = gr.Dropdown(choices = update_model_list(), value=default_model, label="Model Selection", info="Place into models directory")
+            modelDrop.input(fn=touch_model_file, inputs=[modelDrop], outputs=[])
             model_refreshButton = ToolButton(value=ui.refresh_symbol, tooltip="Refresh")
             model_refreshButton.click(fn=lambda: gr.Dropdown.update(choices=update_model_list()),outputs=modelDrop)
             deviceDrop = gr.Dropdown(choices = ['cpu','cuda:0','mps'], value=default_device, label='Generation Device', info='Generate using CPU or GPU')
-                                
         with gr.Tabs():
             with gr.TabItem('Simple Image Gen'):
                 with gr.Row():
