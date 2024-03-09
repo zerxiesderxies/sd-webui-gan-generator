@@ -113,7 +113,10 @@ class Model:
         self.set_model(model_name)
         im1 = self.generate_image(seed1, truncation_psi)
         im2 = self.generate_image(seed2, truncation_psi)
-        
+        i = style_interp # * 2.0 # TODO: fix this to rescale between 0 and 1
+        if i > 1.0:
+            seed1,seed2 = seed2,seed1
+            i = 2.0 - i
         w_avg = self.G.mapping.w_avg
         w_list = []
 
@@ -130,12 +133,15 @@ class Model:
         w_base = w_list[0].clone()
 
         if styleDrop == "fine":
-            w_base[:,8:,:] = xfade(w_base[:,8:,:], w_list[1][:,8:,:], style_interp)
+            w_base[:,8:,:] = xfade(w_base[:,8:,:], w_list[1][:,8:,:], i)
         elif styleDrop == "coarse":
-            w_base[:,:7,:] = xfade(w_base[:,:7,:], w_list[1][:,:7,:], style_interp)
-        elif styleDrop == "total":
-            w_base = xfade(w_list[0], w_list[1], style_interp)
+            w_base[:,:7,:] = xfade(w_base[:,:7,:], w_list[1][:,:7,:], i)
+        else:
+        # elif styleDrop == "total":
+            i = style_interp / 2.0  # scaled between 0 and 1
+            w_base = xfade(w_list[0], w_list[1], i)
 
+        # print(f"mixing w/ style: {styleDrop}, i: {i}")
      
         im3 = self.w_to_img(w_base)[0]
         
