@@ -104,7 +104,6 @@ def on_ui_tabs():
                 with gr.Row():
                     seed1 = gr.Number(label='Seed 1', value=0, min_width=150, precision=0)
                     seed2 = gr.Number(label='Seed 2', value=0, min_width=150, precision=0)
-                    swap_seed_button = ToolButton(value=ui.swap_symbol, tooltip="Swap Seeds", show_progress=False)
                     random_seeds_button = ToolButton(ui.random_symbol, tooltip="Pick Seeds For Me", show_progress=False)
 
                 psi_style = gr.Slider(0,
@@ -114,13 +113,13 @@ def on_ui_tabs():
                                 label='Truncation psi')  
                 with gr.Row():
                     styleDrop = gr.Dropdown(
-                                choices=["coarse", "fine", "fine_average", "coarse_average", "total_average"], label="Method of Style Transfer", value="coarse"
+                                choices=["coarse", "fine", "total"], label="Method of Style Transfer", value="coarse"
                                     ),                                        
                     style_interp = gr.Slider(0,
-                                    2,
-                                    step=0.05,
-                                    value=1.0,
-                                    label='Style transfer interpolation (0 = most like seed 2)')  
+                                    1,
+                                    step=0.01,
+                                    value=0.5,
+                                    label='Cross-Fade between seeds')  
                                     
                     style_run_button = gr.Button('Generate Style Mixing')
 
@@ -141,7 +140,6 @@ def on_ui_tabs():
         style_run_button.click(fn=model.set_model_and_generate_styles,
                          inputs=[deviceDrop, modelDrop, seed1, seed2, psi_style, styleDrop[0], style_interp],
                          outputs=[seed1im, seed2im, styleim, seed1txt, seed2txt])
-        swap_seed_button.click(fn=swap_slider, inputs=[seed1, seed2], outputs=[seed1,seed2])
         random_seeds_button.click(fn=random_seeds, inputs=[seed1,seed2], outputs=[seed1,seed2])
         send_to_style_button1.click(fn=copy_seed, inputs=[outputSeed],outputs=[seed1])
         send_to_style_button2.click(fn=copy_seed, inputs=[outputSeed],outputs=[seed2])

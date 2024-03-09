@@ -12,6 +12,9 @@ import torch.nn as nn
 import torch_utils
 import dnnlib
 
+def xfade(a,b,x):
+    return a*(1.0-x) + b*x
+
 class Model:
     def __init__(self):
         self.device = None
@@ -91,23 +94,21 @@ class Model:
         self.G = self._load_model(model_name)
 
     def generate_image(self, seed: int, truncation_psi: float) -> np.ndarray:
-        print(f"Generating GAN image with {{ seed: {seed}, psi: {truncation_psi} }}")
         w = self.get_w_from_seed(seed, truncation_psi)
         return self.w_to_img(w)[0]
 
-
     def set_model_and_generate_image(self, device: str, model_name: str, seed: int,
-                                     truncation_psi: float) -> np.ndarray:
-        
+                                     truncation_psi: float) -> np.ndarray:        
         self.set_device(device)
         self.set_model(model_name)
         if seed == -1:
             seed = random.randint(0, 0xFFFFFFFF - 1)        
         outputSeedStr = 'Seed: ' + str(seed)
+        print(f"Generating GAN image with {{ seed: {seed}, psi: {truncation_psi} }}")
         return self.generate_image(seed, truncation_psi), outputSeedStr
         
     def set_model_and_generate_styles(self, device: str, model_name: str, seed1: int, seed2: int,
-                                     truncation_psi: float, styleDrop: str, style_interp : float) -> np.ndarray:        
+                                     truncation_psi: float, styleDrop: str, style_interp: float) -> np.ndarray:
         self.set_device(device)
         self.set_model(model_name)
         im1 = self.generate_image(seed1, truncation_psi)
@@ -127,18 +128,13 @@ class Model:
         w_list.append(w)
 
         w_base = w_list[0].clone()
-        # Using coarse method to transfer styles
-        #w_base[:,:7,:] = w_list[1][:,:7,:]
+
         if styleDrop == "fine":
-            w_base[:,8:,:] = w_list[1][:,8:,:]+w_base[:,8:,:]*style_interp
+            w_base[:,8:,:] = xfade(w_base[:,8:,:], w_list[1][:,8:,:], style_interp)
         elif styleDrop == "coarse":
-            w_base[:,:7,:] = w_list[1][:,:7,:]+w_base[:,:7,:]*style_interp
-        elif styleDrop == "coarse_average":
-            w_base[:,:7,:] = (w_list[1][:,:7,:]+w_base[:,:7,:])*0.5
-        elif styleDrop == "fine_average":
-            w_base[:,8:,:] = (w_list[1][:,8:,:]+w_base[:,8:,:])*0.5
-        elif styleDrop == "total_average":
-            w_base = (w_list[0] + w_list[1])*0.5
+            w_base[:,:7,:] = xfade(w_base[:,:7,:], w_list[1][:,:7,:], style_interp)
+        elif styleDrop == "total":
+            w_base = xfade(w_list[0], w_list[1], style_interp)
 
      
         im3 = self.w_to_img(w_base)[0]
