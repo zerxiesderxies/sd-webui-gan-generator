@@ -59,24 +59,24 @@ class Model:
             z = torch.tensor(z).float().cpu().numpy() # convert to float32 for mac
         return z
 
-    def get_w_from_seed(self, seed: int, truncation_psi: float) -> torch.Tensor:
+    def get_w_from_seed(self, seed: int, psi: float) -> torch.Tensor:
         """Get the dlatent from a random seed, using the truncation trick (this could be optional)"""
         z = self.random_z_dim(seed)
         w = self.G.mapping(torch.from_numpy(z).to(self.device), None)
         w_avg = self.G.mapping.w_avg
-        w = w_avg + (w - w_avg) * truncation_psi
+        w = w_avg + (w - w_avg) * psi
 
         return w
 
-    def get_w_from_mean_z(self, truncation_psi: float) -> torch.Tensor:
+    def get_w_from_mean_z(self, psi: float) -> torch.Tensor:
         """Get the dlatent from the mean z space"""
         w = self.G.mapping(torch.zeros((1, self.G.z_dim)).to(self.device), None)
         w_avg = self.G.mapping.w_avg
-        w = w_avg + (w - w_avg) * truncation_psi
+        w = w_avg + (w - w_avg) * psi
 
         return w
 
-    def get_w_from_mean_w(self, seed: int, truncation_psi: float) -> torch.Tensor:
+    def get_w_from_mean_w(self, seed: int, psi: float) -> torch.Tensor:
         """Get the dlatent of the mean w space"""
         w = self.G.mapping.w_avg.unsqueeze(0).unsqueeze(0).repeat(1, 16, 1).to(self.device)
         return w
@@ -93,37 +93,39 @@ class Model:
         self.model_name = model_name
         self.G = self._load_model(model_name)
 
-    def generate_image(self, seed: int, truncation_psi: float) -> np.ndarray:
-        w = self.get_w_from_seed(seed, truncation_psi)
-        return self.w_to_img(w)[0]
+    def generate_image(self, seed: int, psi: float) -> np.ndarray:
+        w = self.get_w_from_seed(seed, psi)
+        image = self.w_to_img(w)[0]
+        images.save_image_with_geninfo(image, seed, psi)
+        return image
 
     def set_model_and_generate_image(self, device: str, model_name: str, seed: int,
-                                     truncation_psi: float) -> np.ndarray:        
+                                     psi: float) -> np.ndarray:        
         self.set_device(device)
         self.set_model(model_name)
         if seed == -1:
             seed = random.randint(0, 0xFFFFFFFF - 1)        
         outputSeedStr = 'Seed: ' + str(seed)
-        print(f"Generating GAN image with {{ seed: {seed}, psi: {truncation_psi} }}")
-        return self.generate_image(seed, truncation_psi), outputSeedStr
+        print(f"Generating GAN image with {{ seed: {seed}, psi: {psi} }}")
+        return self.generate_image(seed, psi), outputSeedStr
         
     def set_model_and_generate_styles(self, device: str, model_name: str, seed1: int, seed2: int,
-                                     truncation_psi: float, styleDrop: str, style_interp: float) -> np.ndarray:
+                                     psi: float, styleDrop: str, style_interp: float) -> np.ndarray:
         self.set_device(device)
         self.set_model(model_name)
-        im1 = self.generate_image(seed1, truncation_psi)
-        im2 = self.generate_image(seed2, truncation_psi)
+        im1 = self.generate_image(seed1, psi)
+        im2 = self.generate_image(seed2, psi)
         w_avg = self.G.mapping.w_avg
         w_list = []
 
         z = self.random_z_dim(seed1)
         w = self.G.mapping(torch.from_numpy(z).to(self.device), None)
-        w = w_avg + (w - w_avg) * truncation_psi
+        w = w_avg + (w - w_avg) * psi
         w_list.append(w)
         
         z = self.random_z_dim(seed2)
         w = self.G.mapping(torch.from_numpy(z).to(self.device), None)
-        w = w_avg + (w - w_avg) * truncation_psi
+        w = w_avg + (w - w_avg) * psi
         w_list.append(w)
 
 
