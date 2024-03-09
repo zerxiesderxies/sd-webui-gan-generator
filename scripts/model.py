@@ -3,7 +3,8 @@ from __future__ import annotations
 import os
 import pathlib
 import pickle
-import sys
+# import sys
+import random
 
 import numpy as np
 import torch
@@ -90,20 +91,20 @@ class Model:
         self.G = self._load_model(model_name)
 
     def generate_image(self, seed: int, truncation_psi: float) -> np.ndarray:
+        print(f"Generating GAN image with {{ seed: {seed}, psi: {truncation_psi} }}")
         w = self.get_w_from_seed(seed, truncation_psi)
         return self.w_to_img(w)[0]
 
 
     def set_model_and_generate_image(self, device: str, model_name: str, seed: int,
-                                     truncation_psi: float, randomSeed: bool) -> np.ndarray:
+                                     truncation_psi: float) -> np.ndarray:
         
         self.set_device(device)
         self.set_model(model_name)
-        if randomSeed:
-            import random
-            seed = random.randint(0, 4294967295 - 1)        
+        if seed == -1:
+            seed = random.randint(0, 0xFFFFFFFF - 1)        
         outputSeedStr = 'Seed: ' + str(seed)
-        return self.generate_image(seed, truncation_psi), outputSeedStr, seed
+        return self.generate_image(seed, truncation_psi), outputSeedStr
         
     def set_model_and_generate_styles(self, device: str, model_name: str, seed1: int, seed2: int,
                                      truncation_psi: float, styleDrop: str, style_interp : float) -> np.ndarray:        
