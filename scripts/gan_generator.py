@@ -3,7 +3,7 @@ import gradio as gr
 from glob import glob
 from pathlib import Path
 
-from modules import script_callbacks
+from modules import script_callbacks, shared
 import json
 import re
 
@@ -21,7 +21,7 @@ ui.swap_symbol = "\U00002194"  # ↔️
 
 model = Model()
 
-DESCRIPTION = '''# StyleGAN3 Simple Image Generator Extension
+DESCRIPTION = '''# StyleGAN Image Generator Extension
 
 Use this tool to generate random images with a pretrained StyleGAN3 network of your choice. 
 Download model pickle files and place them in sd-webui-gan-generator/models folder. 
@@ -62,26 +62,23 @@ def on_ui_tabs():
     with gr.Blocks(analytics_enabled=False, css='style.css') as ui_component:
         gr.Markdown(DESCRIPTION)
         with gr.Row():
-            mix_interpDrop = gr.Dropdown(choices = update_model_list(), value=default_model, label="Model Selection", info="Place into models directory")
+            modelDrop = gr.Dropdown(choices = update_model_list(), value=default_model, label="Model Selection", info="Place into models directory")
             model_refreshButton = ToolButton(value=ui.refresh_symbol, tooltip="Refresh")
-            # model_refreshButton.click(fn=lambda: mix_interpDrop.update(choices=update_model_list()), inputs=[],outputs=[mix_interpDrop])
-            model_refreshButton.click(fn=lambda: gr.Markdown.update(choices=update_model_list()),outputs=mix_interpDrop)
-
+            model_refreshButton.click(fn=lambda: gr.Dropdown.update(choices=update_model_list()),outputs=modelDrop)
             deviceDrop = gr.Dropdown(choices = ['cpu','cuda:0','mps'], value=default_device, label='Generation Device', info='Generate using CPU or GPU')
                                 
         with gr.Tabs():
             with gr.TabItem('Simple Image Gen'):
                 with gr.Row():
                     with gr.Column():
-                        psiSlider = gr.Slider(0,
-                                        2,
+                        psiSlider = gr.Slider(0,2,
                                         step=0.05,
                                         value=0.7,
                                         label='Truncation (psi)')
                         with gr.Row():
-                            seed = gr.Number(label='Seed', value=-1, min_width=150, precision=0)
+                            seedNum = gr.Number(label='Seed', value=-1, min_width=150, precision=0)
                             seed_randButton = ToolButton(ui.random_symbol, tooltip="Set seed to -1, which will cause a new random number to be used every time")
-                            seed_randButton.click(fn=lambda: seed.update(value=-1), show_progress=False, inputs=[], outputs=[seed])
+                            seed_randButton.click(fn=lambda: seedNum.update(value=-1), show_progress=False, inputs=[], outputs=[seedNum])
                             seed_recycleButton = ToolButton(ui.reuse_symbol, tooltip="Reuse seed from last generation")
  
                         simple_runButton = gr.Button('Generate Simple Image')
@@ -95,26 +92,26 @@ def on_ui_tabs():
 
             with gr.TabItem('Seed Mixer'):
                 with gr.Row():
-                    mix_seed1 = gr.Number(label='Seed 1', value=-1, min_width=150, precision=0)
-
-                    mix_seed1_recycleButton = ToolButton(ui.reuse_symbol, tooltip="Reuse seed from last generation")
-                    mix_seed1_recycleButton.click(fn=copy_seed,show_progress=False,inputs=[seedTxt],outputs=[seed])
+                    mix_seedNum1 = gr.Number(label='Seed 1', value=-1, min_width=150, precision=0)
 
                     mix_seed1_randButton = ToolButton(ui.random_symbol, tooltip="Set seed to -1, which will cause a new random number to be used every time")
-                    mix_seed1_randButton.click(fn=lambda: mix_seed1.update(value=-1), show_progress=False, inputs=[], outputs=[mix_seed1])
+                    mix_seed1_randButton.click(fn=lambda: mix_seedNum1.update(value=-1), show_progress=False, inputs=[], outputs=[mix_seedNum1])
 
-                    mix_seed2 = gr.Number(label='Seed 2', value=-1, min_width=150, precision=0)
+                    mix_seed1_recycleButton = ToolButton(ui.reuse_symbol, tooltip="Reuse seed from last generation")
+                    mix_seed1_recycleButton.click(fn=copy_seed,show_progress=False,inputs=[seedTxt],outputs=[seedNum])
 
-                    mix_seed2_recycleButton = ToolButton(ui.reuse_symbol, tooltip="Reuse seed from last generation")
-                    mix_seed2_recycleButton.click(fn=copy_seed,show_progress=False,inputs=[seedTxt],outputs=[seed])
+                    mix_seedNum2 = gr.Number(label='Seed 2', value=-1, min_width=150, precision=0)
 
                     mix_seed2_randButton = ToolButton(ui.random_symbol, tooltip="Set seed to -1, which will cause a new random number to be used every time")
-                    mix_seed2_randButton.click(fn=lambda: mix_seed2.update(value=-1), show_progress=False, inputs=[], outputs=[mix_seed2])
+                    mix_seed2_randButton.click(fn=lambda: mix_seedNum2.update(value=-1), show_progress=False, inputs=[], outputs=[mix_seedNum2])
+
+                    mix_seed2_recycleButton = ToolButton(ui.reuse_symbol, tooltip="Reuse seed from last generation")
+                    mix_seed2_recycleButton.click(fn=copy_seed,show_progress=False,inputs=[seedTxt],outputs=[seedNum])
 
                 mix_psiSlider = gr.Slider(0,2,
                                 step=0.05,
                                 value=0.7,
-                                label='Truncation psi')  
+                                label='Truncation (psi)')  
                 with gr.Row():
                     mix_interp_styleDrop = gr.Dropdown(
                                 choices=["coarse", "fine", "total"], label="Interpolation Style", value="coarse"
@@ -135,18 +132,31 @@ def on_ui_tabs():
                     with gr.Column():
                         seedImg2 = gr.Image(label='Seed 2 Image')
                         seedTxt2 = gr.Markdown(label='Seed 2', value="")
-
         simple_runButton.click(fn=model.set_model_and_generate_image,
-                         inputs=[deviceDrop, mix_interpDrop, seed, psiSlider],
+                         inputs=[deviceDrop, modelDrop, seedNum, psiSlider],
                          outputs=[resultImg, seedTxt])
-        seed1_to_mixButton.click(fn=copy_seed, inputs=[seedTxt],outputs=[mix_seed1])
-        seed2_to_mixButton.click(fn=copy_seed, inputs=[seedTxt],outputs=[mix_seed2])
+        seed1_to_mixButton.click(fn=copy_seed, inputs=[seedTxt],outputs=[mix_seedNum1])
+        seed2_to_mixButton.click(fn=copy_seed, inputs=[seedTxt],outputs=[mix_seedNum2])
 
         mix_runButton.click(fn=model.set_model_and_generate_styles,
-                         inputs=[deviceDrop, mix_interpDrop, mix_seed1, mix_seed2, mix_psiSlider, mix_interp_styleDrop[0], mix_mixSlider],
+                         inputs=[deviceDrop, modelDrop, mix_seedNum1, mix_seedNum2, mix_psiSlider, mix_interp_styleDrop[0], mix_mixSlider],
                          outputs=[seedImg1, seedImg2, styleImg, seedTxt1, seedTxt2])
-        seed_recycleButton.click(fn=copy_seed,show_progress=False,inputs=[seedTxt],outputs=[seed])
+        seed_recycleButton.click(fn=copy_seed,show_progress=False,inputs=[seedTxt],outputs=[seedNum])
 
         return [(ui_component, "GAN Generator", "gan_generator_tab")]
 
 script_callbacks.on_ui_tabs(on_ui_tabs)
+
+def on_ui_settings():
+    section = ('gan_generator', 'StyleGAN Image Generator')
+
+    # shared.opts.add_option('neutral_prompt_enabled', shared.OptionInfo(True, 'Enable neutral-prompt extension', section=section))
+    # global_state.is_enabled = shared.opts.data.get('neutral_prompt_enabled', True)
+
+
+    # shared.opts.add_option('gan3_generator_output_type', shared.OptionInfo(["jpg","png"], 'File format to output', section=section))
+
+    # "cross_attention_optimization": OptionInfo("Automatic", "Cross attention optimization", gr.Dropdown, lambda: {"choices": shared_items.cross_attention_optimizations()}),
+    # shared.opts.onchange('neutral_prompt_verbose', update_verbose)
+
+script_callbacks.on_ui_settings(on_ui_settings)

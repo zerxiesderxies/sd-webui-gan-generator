@@ -183,11 +183,11 @@ class Model:
 
         # print(f"mixing w/ style: {interpType}, i: {i}")
      
-        im3 = self.w_to_img(w_base)[0]
+        img3 = self.w_to_img(w_base)[0]
         filename = f"{seed1}-{seed2}-{mix}-{interpType}.{self.img_format}"
         save_output_to_file(img3, filename, params={'seed1': seed1, 'seed2': seed2, 'mix': mix, 'interp': interpType})
 
         seedTxt1 = 'Seed 1: ' + str(seed1)
         seedTxt2 = 'Seed 2: ' + str(seed2)
-        return img1, img2, im3, seedTxt1, seedTxt2
+        return img1, img2, img3, seedTxt1, seedTxt2
         
