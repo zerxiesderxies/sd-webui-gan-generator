@@ -1,7 +1,9 @@
 # Standard library imports
 import json
 import re
-from os import utime
+import os
+import platform
+import subprocess as sp
 import glob
 from pathlib import Path
 import random
@@ -18,6 +20,7 @@ import scripts.global_state as global_state
 
 ui.swap_symbol = "\U00002194"  # ↔️
 ui.lucky_symbol = "\U0001F340"  # 🍀
+ui.folder_symbol = "\U0001F4C1"  # 📁
 
 model = Model()
 
@@ -63,11 +66,24 @@ def on_ui_tabs():
     with gr.Blocks(analytics_enabled=False, css='style.css') as ui_component:
         gr.Markdown(DESCRIPTION)
         with gr.Row():
-            modelDrop = gr.Dropdown(choices = update_model_list(), value=default_model, label="Model Selection", info="Place into models directory")
+            modelDrop = gr.Dropdown(choices = update_model_list(), value=default_model, label="Model Selection", info="Place into models directory", elem_id="models")
             modelDrop.input(fn=touch_model_file, inputs=[modelDrop], outputs=[])
+ 
             model_refreshButton = ToolButton(value=ui.refresh_symbol, tooltip="Refresh")
             model_refreshButton.click(fn=lambda: gr.Dropdown.update(choices=update_model_list()),outputs=modelDrop)
-            deviceDrop = gr.Dropdown(choices = ['cpu','cuda:0','mps'], value=default_device, label='Generation Device', info='Generate using CPU or GPU')
+ 
+            deviceDrop = gr.Dropdown(choices = ['cpu','cuda:0','mps'], value=default_device, label='Generation Device', info='Generate using CPU or GPU', elem_id="device")
+ 
+            with gr.Group():
+                with gr.Column():
+                    gr.Markdown(label='Output Folder', value="Output folder", elem_id="output-folder")
+                    folderButton = ToolButton(ui.folder_symbol, visible=not shared.cmd_opts.hide_ui_dir_config, tooltip="Open image output directory", elem_id="open-folder")
+                    folderButton.click(
+                        fn=lambda images, index: open_folder(model.outputRoot),
+                        inputs=[],
+                        outputs=[],
+                    )
+
         with gr.Tabs():
             with gr.TabItem('Simple Image Gen'):
                 with gr.Row():
@@ -78,8 +94,10 @@ def on_ui_tabs():
                                         label='Truncation (psi)')
                         with gr.Row():
                             seedNum = gr.Number(label='Seed', value=-1, min_width=150, precision=0)
+
                             seed_randButton = ToolButton(ui.random_symbol, tooltip="Set seed to -1, which will cause a new random number to be used every time")
                             seed_randButton.click(fn=lambda: seedNum.update(value=-1), show_progress=False, inputs=[], outputs=[seedNum])
+
                             seed_recycleButton = ToolButton(ui.reuse_symbol, tooltip="Reuse seed from last generation")
  
                         simple_runButton = gr.Button('Generate Simple Image')
@@ -97,16 +115,20 @@ def on_ui_tabs():
 
                     mix_seed1_luckyButton = ToolButton(ui.lucky_symbol, tooltip="Roll generate a new seed")
                     mix_seed1_luckyButton.click(fn=lambda: mix_seed1_Num.update(value=newSeed()), show_progress=False, inputs=[], outputs=[mix_seed1_Num])
+
                     mix_seed1_randButton = ToolButton(ui.random_symbol, tooltip="Set seed to -1, which will cause a new random number to be used every time")
                     mix_seed1_randButton.click(fn=lambda: mix_seed1_Num.update(value=-1), show_progress=False, inputs=[], outputs=[mix_seed1_Num])
+
                     mix_seed1_recycleButton = ToolButton(ui.reuse_symbol, tooltip="Reuse seed from last generation")
 
                     mix_seed2_Num = gr.Number(label='Seed 2', value=-1, min_width=150, precision=0)
 
                     mix_seed2_luckyButton = ToolButton(ui.lucky_symbol, tooltip="Roll generate a new seed")
                     mix_seed2_luckyButton.click(fn=lambda: mix_seed2_Num.update(value=newSeed()), show_progress=False, inputs=[], outputs=[mix_seed2_Num])
+
                     mix_seed2_randButton = ToolButton(ui.random_symbol, tooltip="Set seed to -1, which will cause a new random number to be used every time")
                     mix_seed2_randButton.click(fn=lambda: mix_seed2_Num.update(value=-1), show_progress=False, inputs=[], outputs=[mix_seed2_Num])
+
                     mix_seed2_recycleButton = ToolButton(ui.reuse_symbol, tooltip="Reuse seed from last generation")
 
                 mix_psiSlider = gr.Slider(0,2,
@@ -165,5 +187,42 @@ script_callbacks.on_ui_settings(on_ui_settings)
 
 def update_image_format():
     global_state.image_format = shared.opts.data.get('gan_generator_image_format', 'jpg')
-    print(f"Output Image Format: {global_state.image_format}")
+    print(f"GAN Output Image Format: {global_state.image_format}")
 
+def open_folder(f, images=None, index=None):
+    if shared.cmd_opts.hide_ui_dir_config:
+        return
+
+    try:
+        if 'Sub' in shared.opts.open_dir_button_choice:
+            image_dir = os.path.split(images[index]["name"].rsplit('?', 1)[0])[0]
+            if 'temp' in shared.opts.open_dir_button_choice or not ui_tempdir.is_gradio_temp_path(image_dir):
+                f = image_dir
+    except Exception:
+        pass
+
+    if not os.path.exists(f):
+        msg = f'Folder "{f}" does not exist. After you create an image, the folder will be created.'
+        print(msg)
+        gr.Info(msg)
+        return
+    elif not os.path.isdir(f):
+        msg = f"""
+WARNING
+An open_folder request was made with an argument that is not a folder.
+This could be an error or a malicious attempt to run code on your computer.
+Requested path was: {f}
+"""
+        print(msg, file=sys.stderr)
+        gr.Warning(msg)
+        return
+
+    path = os.path.normpath(f)
+    if platform.system() == "Windows":
+        os.startfile(path)
+    elif platform.system() == "Darwin":
+        sp.Popen(["open", path])
+    elif "microsoft-standard-WSL2" in platform.uname().release:
+        sp.Popen(["wsl-open", path])
+    else:
+        sp.Popen(["xdg-open", path])
