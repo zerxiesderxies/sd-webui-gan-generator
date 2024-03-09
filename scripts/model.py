@@ -1,20 +1,20 @@
 from __future__ import annotations
-
+# Standard library imports
 import os
 import pathlib
 import pickle
-# import sys
 import random
-
+# Third-party library imports
 import numpy as np
 import torch
 import torch.nn as nn
 import torch_utils
 import dnnlib
-
+from PIL import Image
+# Internal module imports
 from modules.images import save_image_with_geninfo
 from modules.paths_internal import default_output_dir
-from PIL import Image
+import scripts.global_state as global_state
 
 def newSeed() -> int:
     return random.randint(0, 0xFFFFFFFF - 1)
@@ -39,7 +39,6 @@ class Model:
         self.G = None
         self.outputRoot = pathlib.Path(__file__) / default_output_dir / "stylegan-images"
         mkdir_p(self.outputRoot)
-        self.img_format = "png" #"jpg" # "png"
 
     def _load_model(self, model_name: str) -> nn.Module:
         path = pathlib.Path(__file__).resolve().parents[1] / 'models' / model_name 
@@ -117,7 +116,7 @@ class Model:
         return self.outputRoot / ".".join(self.model_name.split(".")[:-1])
 
     def generate_image(self, seed: int, psi: float, save: bool=True) -> np.ndarray:
-        filename = f"base-{seed}-{psi}.{self.img_format}"
+        filename = f"base-{seed}-{psi}.{global_state.image_format}"
         path = self.output_path() / filename
         if path.exists():
             return Image.open(path)
@@ -187,7 +186,7 @@ class Model:
         # print(f"mixing w/ style: {interpType}, i: {i}")
      
         img3 = self.w_to_img(w_base)[0]
-        filename = f"mix-{seed1}-{seed2}-{mix}-{interpType}.{self.img_format}"
+        filename = f"mix-{seed1}-{seed2}-{mix}-{interpType}.{global_state.image_format}"
         self.save_output_to_file(img3, filename, params={'seed1': seed1, 'seed2': seed2, 'mix': mix, 'interp': interpType})
         
         seedTxt1 = 'Seed 1: ' + str(seed1)

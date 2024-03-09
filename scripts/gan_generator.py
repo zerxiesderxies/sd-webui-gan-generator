@@ -1,24 +1,21 @@
-from typing import Union
-from os import utime
-import modules.scripts as scripts
-import gradio as gr
-import glob
-from pathlib import Path
-
-from modules import script_callbacks, shared
+# Standard library imports
 import json
 import re
-
-import gradio as gr
-import numpy as np
-
-from scripts.model import Model, newSeed 
-
-import torch
+from os import utime
+import glob
+from pathlib import Path
 import random
-
-from modules import ui
+# Third-party library imports
+import numpy as np
+import torch
+from typing import Union
+import gradio as gr
+# Internal module imports
+from modules import script_callbacks, shared, ui_components, scripts, ui
 from modules.ui_components import ToolButton
+from scripts.model import Model, newSeed
+import scripts.global_state as global_state
+
 ui.swap_symbol = "\U00002194"  # ↔️
 ui.lucky_symbol = "\U0001F340"  # 🍀
 
@@ -158,15 +155,15 @@ def on_ui_tabs():
 script_callbacks.on_ui_tabs(on_ui_tabs)
 
 def on_ui_settings():
+    global_state.init()
     section = ('gan_generator', 'StyleGAN Image Generator')
-
-    # shared.opts.add_option('neutral_prompt_enabled', shared.OptionInfo(True, 'Enable neutral-prompt extension', section=section))
-    # global_state.is_enabled = shared.opts.data.get('neutral_prompt_enabled', True)
-
-
-    # shared.opts.add_option('gan_generator_output_type', shared.OptionInfo(["jpg","png"], 'File format to output', section=section))
-
-    # "cross_attention_optimization": OptionInfo("Automatic", "Cross attention optimization", gr.Dropdown, lambda: {"choices": shared_items.cross_attention_optimizations()}),
-    # shared.opts.onchange('neutral_prompt_verbose', update_verbose)
-
+    shared.opts.add_option('gan_generator_image_format',
+        shared.OptionInfo("jpg", "File format for image outputs", gr.Dropdown, {"choices": ["jpg", "png"]}, section=section))
+    shared.opts.onchange('gan_generator_image_format', update_image_format)
+    
 script_callbacks.on_ui_settings(on_ui_settings)
+
+def update_image_format():
+    global_state.image_format = shared.opts.data.get('gan_generator_image_format', 'jpg')
+    print(f"Output Image Format: {global_state.image_format}")
+
