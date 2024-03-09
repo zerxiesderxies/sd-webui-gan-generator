@@ -3,13 +3,17 @@ from __future__ import annotations
 import os
 import pathlib
 import pickle
-import sys
+# import sys
+import random
 
 import numpy as np
 import torch
 import torch.nn as nn
 import torch_utils
 import dnnlib
+
+def xfade(a,b,x):
+    return a*(1.0-x) + b*x
 
 class Model:
     def __init__(self):
@@ -93,25 +97,22 @@ class Model:
         w = self.get_w_from_seed(seed, truncation_psi)
         return self.w_to_img(w)[0]
 
-
     def set_model_and_generate_image(self, device: str, model_name: str, seed: int,
-                                     truncation_psi: float, randomSeed: bool) -> np.ndarray:
-        
+                                     truncation_psi: float) -> np.ndarray:        
         self.set_device(device)
         self.set_model(model_name)
-        if randomSeed:
-            import random
-            seed = random.randint(0, 4294967295 - 1)        
+        if seed == -1:
+            seed = random.randint(0, 0xFFFFFFFF - 1)        
         outputSeedStr = 'Seed: ' + str(seed)
-        return self.generate_image(seed, truncation_psi), outputSeedStr, seed
+        print(f"Generating GAN image with {{ seed: {seed}, psi: {truncation_psi} }}")
+        return self.generate_image(seed, truncation_psi), outputSeedStr
         
     def set_model_and_generate_styles(self, device: str, model_name: str, seed1: int, seed2: int,
-                                     truncation_psi: float, styleDrop: str, style_interp : float) -> np.ndarray:        
+                                     truncation_psi: float, styleDrop: str, style_interp: float) -> np.ndarray:
         self.set_device(device)
         self.set_model(model_name)
         im1 = self.generate_image(seed1, truncation_psi)
         im2 = self.generate_image(seed2, truncation_psi)
-        
         w_avg = self.G.mapping.w_avg
         w_list = []
 
@@ -125,20 +126,22 @@ class Model:
         w = w_avg + (w - w_avg) * truncation_psi
         w_list.append(w)
 
-        w_base = w_list[0].clone()
-        # Using coarse method to transfer styles
-        #w_base[:,:7,:] = w_list[1][:,:7,:]
-        if styleDrop == "fine":
-            w_base[:,8:,:] = w_list[1][:,8:,:]+w_base[:,8:,:]*style_interp
-        elif styleDrop == "coarse":
-            w_base[:,:7,:] = w_list[1][:,:7,:]+w_base[:,:7,:]*style_interp
-        elif styleDrop == "coarse_average":
-            w_base[:,:7,:] = (w_list[1][:,:7,:]+w_base[:,:7,:])*0.5
-        elif styleDrop == "fine_average":
-            w_base[:,8:,:] = (w_list[1][:,8:,:]+w_base[:,8:,:])*0.5
-        elif styleDrop == "total_average":
-            w_base = (w_list[0] + w_list[1])*0.5
 
+        if styleDrop == "total":
+            i = style_interp / 2.0  # scaled between 0 and 1
+            w_base = xfade(w_list[0], w_list[1], i)
+        else:
+            i = style_interp # * 2.0 # input should be btwn 0 and 1, then we multiply by 2 to fit these calculations
+            if i > 1.0: # mirror across middle
+                w_list = w_list[::-1] # effectively swap the two seeds
+                i = 2.0 - i
+            w_base = w_list[0].clone()
+            if styleDrop == "fine":
+                w_base[:,8:,:] = xfade(w_base[:,8:,:], w_list[1][:,8:,:], i)
+            elif styleDrop == "coarse":
+                w_base[:,:7,:] = xfade(w_base[:,:7,:], w_list[1][:,:7,:], i)
+
+        # print(f"mixing w/ style: {styleDrop}, i: {i}")
      
         im3 = self.w_to_img(w_base)[0]
         
