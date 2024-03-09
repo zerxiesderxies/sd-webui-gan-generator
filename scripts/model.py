@@ -34,7 +34,7 @@ class Model:
         self.device = None
         self.model_name = None
         self.G = None
-        self.outputRoot = pathlib.Path(__file__) / default_output_dir / "stylegan3-images"
+        self.outputRoot = pathlib.Path(__file__) / default_output_dir / "stylegan-images"
         mkdir_p(self.outputRoot)
         self.img_format = "png" #"jpg" # "png"
 
