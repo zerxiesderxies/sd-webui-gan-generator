@@ -28,11 +28,15 @@ def mkdir_p(path):
     except OSError as e:
         # Handle other errors
         print(f"Error creating directory: {e}")
+
 class Model:
     def __init__(self):
         self.device = None
         self.model_name = None
         self.G = None
+        self.outputRoot = pathlib.Path(__file__) / default_output_dir / "stylegan3-images"
+        mkdir_p(self.outputRoot)
+        self.img_format = "png" #"jpg" # "png"
 
     def _load_model(self, model_name: str) -> nn.Module:
         path = pathlib.Path(__file__).resolve().parents[1] / 'models' / model_name 
@@ -48,7 +52,6 @@ class Model:
         G.eval()
         G.to(self.device)
         return G
-
 
     def w_to_img(self, dlatents: Union[List[torch.Tensor], torch.Tensor], noise_mode: str = 'const') -> np.ndarray:
         """
@@ -105,21 +108,29 @@ class Model:
             return
         self.model_name = model_name
         self.G = self._load_model(model_name)
+        mkdir_p(self.output_path())
+
+    def output_path(self):
+        return self.outputRoot / ".".join(self.model_name.split(".")[:-1])
 
     def generate_image(self, seed: int, psi: float, save: bool=True) -> np.ndarray:
-        w = self.get_w_from_seed(seed, psi)
-        output = self.w_to_img(w)[0]
-        info = { 'GAN-generator': {'seed': seed, 'psi': psi, 'model': self.model_name} }
-        filename = f"{self.model_name.replace('.pkl', '')}-{seed}-{psi}.jpg"
-        # filename = f"{seed}-{psi}.jpg"
-        # filename = os.path.join(default_output_dir(), "gan", self.model_name, filename)
-        path = os.path.join(default_output_dir, "gan-images")
-        mkdir_p(path)
-        filename = os.path.join(path, filename)
-        if not os.path.exists(filename):
+        filename = f"{seed}-{psi}.{self.img_format}"
+        path = self.output_path() / filename
+        if path.exists():
+            return Image.open(path)
+        else:
+            w = self.get_w_from_seed(seed, psi)
+            output = self.w_to_img(w)[0]
+            self.save_output_to_file(output, filename, params={'seed': seed, 'psi': psi})
+            return output
+
+    def save_output_to_file(self, output, filename, params: dict = None):
+        path = self.output_path() / filename
+        if not path.exists():
+            print(f"Generated GAN image with {str(params)}")
+            info = { 'extension': 'gan-generator', 'model': self.model_name }
             image = Image.fromarray(output)
-            save_image_with_geninfo(image, str(info), filename )
-        return output
+            save_image_with_geninfo(image, str({**info, **params}), str(path))
 
     def set_model_and_generate_image(self, device: str, model_name: str, seed: int,
                                      psi: float) -> np.ndarray:        
@@ -127,16 +138,22 @@ class Model:
         self.set_model(model_name)
         if seed == -1:
             seed = random.randint(0, 0xFFFFFFFF - 1)        
-        outputSeedStr = 'Seed: ' + str(seed)
-        print(f"Generating GAN image with {{ seed: {seed}, psi: {psi} }}")
-        return self.generate_image(seed, psi), outputSeedStr
+        seedTxt = 'Seed: ' + str(seed)
+        return self.generate_image(seed, psi), seedTxt
         
     def set_model_and_generate_styles(self, device: str, model_name: str, seed1: int, seed2: int,
-                                     psi: float, styleDrop: str, style_interp: float) -> np.ndarray:
+                                     psi: float, interpType: str, mix: float) -> np.ndarray:
         self.set_device(device)
         self.set_model(model_name)
-        im1 = self.generate_image(seed1, psi)
-        im2 = self.generate_image(seed2, psi)
+
+        if seed1 == -1:
+            seed1 = random.randint(0, 0xFFFFFFFF - 1)        
+        img1 = self.generate_image(seed1, psi)
+
+        if seed2 == -1:
+            seed2 = random.randint(0, 0xFFFFFFFF - 1)        
+        img2 = self.generate_image(seed2, psi)
+
         w_avg = self.G.mapping.w_avg
         w_list = []
 
@@ -150,27 +167,27 @@ class Model:
         w = w_avg + (w - w_avg) * psi
         w_list.append(w)
 
-
-        if styleDrop == "total":
-            i = style_interp / 2.0  # scaled between 0 and 1
+        if interpType == "total":
+            i = mix / 2.0  # scaled between 0 and 1
             w_base = xfade(w_list[0], w_list[1], i)
         else:
-            i = style_interp # * 2.0 # input should be btwn 0 and 1, then we multiply by 2 to fit these calculations
+            i = mix # * 2.0 # input should be btwn 0 and 1, then we multiply by 2 to fit these calculations
             if i > 1.0: # mirror across middle
                 w_list = w_list[::-1] # effectively swap the two seeds
                 i = 2.0 - i
             w_base = w_list[0].clone()
-            if styleDrop == "fine":
+            if interpType == "fine":
                 w_base[:,8:,:] = xfade(w_base[:,8:,:], w_list[1][:,8:,:], i)
-            elif styleDrop == "coarse":
+            elif interpType == "coarse":
                 w_base[:,:7,:] = xfade(w_base[:,:7,:], w_list[1][:,:7,:], i)
 
-        # print(f"mixing w/ style: {styleDrop}, i: {i}")
+        # print(f"mixing w/ style: {interpType}, i: {i}")
      
         im3 = self.w_to_img(w_base)[0]
-        
-        seed1txt =  'Seed 1: ' + str(seed1)
-        seed2txt =  'Seed 2: ' + str(seed2)
+        filename = f"{seed1}-{seed2}-{mix}-{interpType}.{self.img_format}"
+        save_output_to_file(img3, filename, params={'seed1': seed1, 'seed2': seed2, 'mix': mix, 'interp': interpType})
 
-        return im1, im2, im3, seed1txt, seed2txt
+        seedTxt1 = 'Seed 1: ' + str(seed1)
+        seedTxt2 = 'Seed 2: ' + str(seed2)
+        return img1, img2, im3, seedTxt1, seedTxt2
         
