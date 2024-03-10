@@ -166,7 +166,7 @@ class Model:
 
         if interpType == "total":
             i = mix / 2.0  # scaled between 0 and 1
-            w_base = xfade(w_list[0], w_list[1], i)
+            w_base = self.xfade(w_list[0], w_list[1], i)
         else:
             i = mix # * 2.0 # input should be btwn 0 and 1, then we multiply by 2 to fit these calculations
             if i > 1.0: # mirror across middle
@@ -174,9 +174,9 @@ class Model:
                 i = 2.0 - i
             w_base = w_list[0].clone()
             if interpType == "fine":
-                w_base[:,8:,:] = xfade(w_base[:,8:,:], w_list[1][:,8:,:], i)
+                w_base[:,8:,:] = self.xfade(w_base[:,8:,:], w_list[1][:,8:,:], i)
             elif interpType == "coarse":
-                w_base[:,:7,:] = xfade(w_base[:,:7,:], w_list[1][:,:7,:], i)
+                w_base[:,:7,:] = self.xfade(w_base[:,:7,:], w_list[1][:,:7,:], i)
 
         # print(f"mixing w/ style: {interpType}, i: {i}")
      
