@@ -51,7 +51,7 @@ def default_model() -> Union[str, None]:
 def touch_model_file(modelDrop) -> None:
     filename = str(model_path / modelDrop)
     with open(filename, 'a'):
-        utime(filename, None)  # Update the modification timestamp
+        os.utime(filename, None)  # Update the modification timestamp
 
 def default_device() -> str:
     if torch.backends.mps.is_available():
