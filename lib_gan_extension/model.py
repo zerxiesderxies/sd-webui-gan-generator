@@ -4,6 +4,7 @@ import os
 import pathlib
 import pickle
 import random
+from typing import Union
 # Third-party library imports
 import numpy as np
 import torch
@@ -14,31 +15,25 @@ from PIL import Image
 # Internal module imports
 from modules.images import save_image_with_geninfo
 from modules.paths_internal import default_output_dir
-import scripts.global_state as global_state
+from lib_gan_extension import global_state, file_utils
 
-def newSeed() -> int:
-    return random.randint(0, 0xFFFFFFFF - 1)
-
-def xfade(a,b,x):
-    return a*(1.0-x) + b*x
-
-def mkdir_p(path):
-    try:
-        os.makedirs(path)
-    except FileExistsError:
-        # If the directory already exists, it's okay
-        pass
-    except OSError as e:
-        # Handle other errors
-        print(f"Error creating directory: {e}")
-
+# utility functions       
 class Model:
+
+    @classmethod
+    def newSeed(cls) -> int:
+        return random.randint(0, 0xFFFFFFFF - 1)
+
+    @classmethod
+    def xfade(cls, a,b,x):
+        return a*(1.0-x) + b*x
+
     def __init__(self):
         self.device = None
         self.model_name = None
         self.G = None
         self.outputRoot = pathlib.Path(__file__) / default_output_dir / "stylegan-images"
-        mkdir_p(self.outputRoot)
+        file_utils.mkdir_p(self.outputRoot)
 
     def _load_model(self, model_name: str) -> nn.Module:
         path = pathlib.Path(__file__).resolve().parents[1] / 'models' / model_name 
@@ -110,7 +105,7 @@ class Model:
             return
         self.model_name = model_name
         self.G = self._load_model(model_name)
-        mkdir_p(self.output_path())
+        file_utils.mkdir_p(self.output_path())
 
     def output_path(self):
         return self.outputRoot / ".".join(self.model_name.split(".")[:-1])
@@ -139,7 +134,7 @@ class Model:
         self.set_device(device)
         self.set_model(model_name)
         if seed == -1:
-            seed = newSeed()
+            seed = self.newSeed()
         seedTxt = 'Seed: ' + str(seed)
         return self.generate_image(seed, psi), seedTxt
         
@@ -149,11 +144,11 @@ class Model:
         self.set_model(model_name)
 
         if seed1 == -1:
-            seed1 = newSeed()
+            seed1 = self.newSeed()
         img1 = self.generate_image(seed1, psi)
 
         if seed2 == -1:
-            seed2 = newSeed()
+            seed2 = self.newSeed()
         img2 = self.generate_image(seed2, psi)
 
         w_avg = self.G.mapping.w_avg
@@ -192,4 +187,3 @@ class Model:
         seedTxt1 = 'Seed 1: ' + str(seed1)
         seedTxt2 = 'Seed 2: ' + str(seed2)
         return img1, img2, img3, seedTxt1, seedTxt2
-        
