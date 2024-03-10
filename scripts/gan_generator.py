@@ -137,8 +137,8 @@ def on_ui_tabs():
                                 label='Truncation (psi)')  
                 with gr.Row():
                     mix_interp_styleDrop = gr.Dropdown(
-                                choices=["coarse", "fine", "total"], label="Interpolation Style", value="coarse"
-                                    ),                                   
+                        choices=["coarse", "fine", "total"], label="Interpolation Style", value="coarse"
+                    )
                     mix_mixSlider = gr.Slider(0,2,
                                     step=0.01,
                                     value=1.0,
@@ -169,7 +169,7 @@ def on_ui_tabs():
         mix_seed2_recycleButton.click(fn=copy_seed,show_progress=False,inputs=[mix_seed2_Txt],outputs=[mix_seed2_Num])
 
         mix_runButton.click(fn=model.set_model_and_generate_styles,
-                         inputs=[deviceDrop, modelDrop, mix_seed1_Num, mix_seed2_Num, mix_psiSlider, mix_interp_styleDrop[0], mix_mixSlider],
+                         inputs=[deviceDrop, modelDrop, mix_seed1_Num, mix_seed2_Num, mix_psiSlider, mix_interp_styleDrop, mix_mixSlider],
                          outputs=[mix_seed1_Img, mix_seed2_Img, mix_styleImg, mix_seed1_Txt, mix_seed2_Txt])
 
         return [(ui_component, "GAN Generator", "gan_generator_tab")]
