@@ -77,22 +77,22 @@ The `Simple Image Gen` tab handles basic seed to image generation.
 - Select a seed (integer from `0 to 2^32-1`)
 - Select your truncation psi (`0.7` is a good value to start with).
 - Click `Generate Simple Image` to generate the image. Note: this could take some time on a slower CPU. Check the command window for status.
-- Hit the dice button for random seed (-1 value), and the recycle button to replay the last seed.
-- If you are happy with the image, you can send the seed to the Style Mixer tab for further processing.
+- If generating first image on cuda/GPU, wait for `bias_act_plugin`, and `filtered_lrelu_plugin` to build.
+- Hit the dice 🎲 button for random seed (-1 value), and the recycle ♻ button to replay the last seed.
+- If you are happy with the image, you can send the seed to the Seed Mixer tab for further processing.
+- Images are saved to `default_output_dir`. Click the folder icon 📂 to open the folder in file browser. 
 
-#### Style Mixing
+#### Seed Mixing
 
 ![StyleMixing](https://github.com/zerxiesderxies/sd-webui-gan-generator/assets/161509935/b934563f-dccf-4a28-b111-fe92a480f41b)  
-The `Style Mixing` tab include simple style mixing features. Style mixing is the process of transferring elements from one image into another. See explanation for further information.
+The `Seed Mixing` tab includes simple seed mixing features. Seed mixing is the process of transferring elements from one image into another. See explanation for further information.
 
-1. Seeds imported from simple gen page, or input your Seed 1 and Seed 2 directly
-
-- Can also click `Pick Seeds For Me` to randomly pick both seed1 and seed2
-- Can click `Swap Seeds` to flip the values of Seed 1 and Seed 2.
-
-2. Select your truncation psi and transfer interpolation factor.
+1. Seeds imported from simple gen page, or input your Seed 1 (left) and Seed 2 (right) directly
+- Can also click clover icon 🍀 to randomly populate both seed1 and seed2
+- Can also click dice icon 🎲 to randomly pick seed1 and seed2 at runtime, and recyle icon to replay the last random seeds.
+2. Select your truncation psi and seed mix (cross fade)
 3. Select your method of style transfer in the drop-down menu.
-4. Click `Generate Style Mixing`. You should see three images being generated: the first two seeds and the mixed image.
+4. Click `Generate Style Mixing`. You should see three images being generated: the first two seeds and the mixed image in the middle.
 
 ## Explanation of the Parameters
 
@@ -100,10 +100,8 @@ The `Style Mixing` tab include simple style mixing features. Style mixing is the
 - **Truncation psi**: A float that represents how much to deviate from the global average (1 = no truncation, 0 = global average). Higher values will be more diverse but with worse quality. Default is 0.7.
 - **Cross-fade Interpolation**: A float slider for mixing the latent space between the two images.
 - **Transfer Method**:
-
   - **Coarse**: This modifies layers 0-6, which govern high-level features. Use this if you want to modify pose, face shape, or hair style, but keep the compositional details of eyebrows, nose, eye color, and skin tone.
-  - **Fine**: This modifies layers 7-14. Use this if you want to keep the subject's pose and shape but modify fine details such as
-    eyebrows, nose, eye color, and skin tone.
+  - **Fine**: This modifies layers 7-14. Use this if you want to keep the subject's pose and shape but modify fine details such as eyebrows, nose, eye color, and skin tone.
   - **Total**: This mode interpolates across all layers, creating a truly linear blend between the images.
 
 ## Credits
