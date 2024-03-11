@@ -1,4 +1,3 @@
-import re
 import os
 from pathlib import Path
 import glob
@@ -7,7 +6,7 @@ from typing import Union
 import gradio as gr
 from modules import script_callbacks, shared, ui, ui_components
 from modules.ui_components import ToolButton
-from lib_gan_extension import global_state, file_utils
+from lib_gan_extension import global_state, file_utils, str_utils
 from lib_gan_extension.model import Model
 
 ui.swap_symbol = "\U00002194"  # ↔️
@@ -54,7 +53,7 @@ def on_ui_tabs():
             with gr.TabItem('Simple Image Gen'):
                 with gr.Row():
                     with gr.Column():
-                        psiSlider = gr.Slider(0,2,
+                        psiSlider = gr.Slider(-1,1,
                                         step=0.05,
                                         value=0.7,
                                         label='Truncation (psi)')
@@ -97,15 +96,15 @@ def on_ui_tabs():
 
                     mix_seed2_recycleButton = ToolButton(ui.reuse_symbol, tooltip="Reuse seed from last generation")
 
-                mix_psiSlider = gr.Slider(0,2,
+                mix_psiSlider = gr.Slider(-1,1,
                                 step=0.05,
                                 value=0.7,
                                 label='Truncation (psi)')  
                 with gr.Row():
                     mix_interp_styleDrop = gr.Dropdown(
-                        choices=["coarse", "fine", "total"], label="Interpolation Style", value="coarse"
+                        choices=["coarse (0xFF00)", "mid (0x0FF0)", "fine (0x00FF)", "total (0xFFFF)"], label="Interpolation Mask", value="coarse (0xFF00)"
                     )
-                    mix_mixSlider = gr.Slider(0,2,
+                    mix_mixSlider = gr.Slider(-1,1,
                                     step=0.01,
                                     value=1.0,
                                     label='Seed Mix (Crossfade)')
@@ -151,12 +150,8 @@ def on_ui_settings():
     
 script_callbacks.on_ui_settings(on_ui_settings)
 
-def str2num(string) -> Union[int, None]:
-    match = re.search(r'(\d+)$', string)
-    return int(match.group()) if match else None
-
 def copy_seed(seedTxt) -> Union[int, None]:
-    return str2num(seedTxt)
+    return str_utils.str2num(seedTxt)
 
 def update_model_list() -> tuple[str]:
     files = glob.glob(str(model_path / "*.pkl"))

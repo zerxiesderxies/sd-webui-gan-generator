@@ -15,9 +15,7 @@ from PIL import Image
 # Internal module imports
 from modules.images import save_image_with_geninfo
 from modules.paths_internal import default_output_dir
-from lib_gan_extension import global_state, file_utils
-
-# utility functions       
+from lib_gan_extension import global_state, file_utils, str_utils
 class Model:
 
     @classmethod
@@ -170,26 +168,56 @@ class Model:
         w = w_avg + (w - w_avg) * psi
         w_list.append(w)
 
-        if interpType == "total":
-            i = mix / 2.0  # scaled between 0 and 1
-            w_base = self.xfade(w_list[0], w_list[1], i)
-        else:
-            i = mix # * 2.0 # input should be btwn 0 and 1, then we multiply by 2 to fit these calculations
-            if i > 1.0: # mirror across middle
-                w_list = w_list[::-1] # effectively swap the two seeds
-                i = 2.0 - i
-            w_base = w_list[0].clone()
-            if interpType == "fine":
-                w_base[:,8:,:] = self.xfade(w_base[:,8:,:], w_list[1][:,8:,:], i)
-            elif interpType == "coarse":
-                w_base[:,:7,:] = self.xfade(w_base[:,:7,:], w_list[1][:,:7,:], i)
+        match interpType:
+            case "coarse":
+                mask = 0xFF00
+            case "mid":
+                mask = 0x0FF0
+            case "fine":
+                mask = 0x00FF
+            case "total":
+                mask = 0xFFFF
+            case _:
+                mask = str_utils.str2num(interpType)
 
-        # print(f"mixing w/ style: {interpType}, i: {i}")
-     
+        w_base = w_list[0].clone()
+
+        slider_max = 2.0 # FIXME: this is a hack to fix the slider bug where range is stuck at 0-2
+        i = mix / slider_max # rescale between 0 and 1
+        if mask != 0xFFFF:
+            i = i * 2.0 - 1.0 # rescale between -1 and 1
+            if i > 0: # transfer L onto R
+                w_base = w_list[1].clone()
+            else: # transfer R onto L
+                i = abs(i)
+                w_list = w_list[::-1] # effectively swap the two seeds
+            i *= 1.5 # increase range
+
+        mask = self.num2mask(mask)
+        w_base[:,mask,:] = self.xfade(w_list[0][:,mask,:], w_list[1][:,mask,:], i)
+
         img3 = self.w_to_img(w_base)[0]
         filename = f"mix-{seed1}-{seed2}-{mix}-{interpType}.{global_state.image_format}"
-        self.save_output_to_file(img3, filename, params={'seed1': seed1, 'seed2': seed2, 'mix': mix, 'interp': interpType})
+        self.save_output_to_file(img3, filename, params={'seed1': seed1, 'seed2': seed2, 'mix': i, 'interp': interpType})
         
-        seedTxt1 = 'Seed 1: ' + str(seed1)
-        seedTxt2 = 'Seed 2: ' + str(seed2)
+        seedTxt1 = f"Seed 1: {str(seed1)} ({str_utils.num2hex(seed1)})"
+        seedTxt2 = f"Seed 2: {str(seed2)} ({str_utils.num2hex(seed2)})"
+
         return img1, img2, img3, seedTxt1, seedTxt2
+
+    @classmethod
+    def weight_vector(cls, size: int, offset:int, total_len:int=16):
+        length = size * 2
+        cap = int(total_len / 2) - size
+        mask = np.array([0] * cap + [1] * length + [0] * cap, dtype=bool)
+        mask = np.roll(mask, offset) # shfit by offset
+        return mask
+
+    @classmethod
+    def mask2num(cls, mask: np.ndarray) -> int:
+        int_array = mask.astype(int)
+        return int(''.join(map(str, int_array)), 2)
+
+    @classmethod
+    def num2mask(cls, num: int) -> np.ndarray:
+        return np.array([x=='1' for x in bin(num)[2:].zfill(16)], dtype=bool)
