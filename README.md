@@ -67,7 +67,7 @@ TODO: Need Workaround
 
 ### User Interface
 
-![MainPage](https://github.com/zerxiesderxies/sd-webui-gan-generator/assets/161509935/f57d33d6-4c7d-4318-8eeb-3135c46fe392)
+![MainPage](https://github.com/zerxiesderxies/sd-webui-gan-generator/assets/161509935/f57d33d6-4c7d-4318-8eeb-3135c46fe392)  
 The `Simple Image Gen` tab handles basic seed to image generation.
 
 1. Under model selection, select your model from the drop down menu. Click refresh to update the model list.
@@ -89,7 +89,7 @@ The `Seed Mixing` tab includes simple seed mixing features. Seed mixing is the p
 
 1. Seeds imported from simple gen page, or input your Seed 1 (left) and Seed 2 (right) directly
 - Can also click clover icon 🍀 to randomly populate both seed1 and seed2
-- Can also click dice icon 🎲 to randomly pick seed1 and seed2 at runtime, and recyle icon to replay the last random seeds.
+- Can also click dice icon 🎲 to randomly pick seed1 and seed2 at runtime, and recycle icon to replay the last random seeds.
 2. Select your truncation psi and seed mix (cross fade)
 3. Select your method of style transfer in the drop-down menu.
 4. Click `Generate Style Mixing`. You should see three images being generated: the first two seeds and the mixed image in the middle.
