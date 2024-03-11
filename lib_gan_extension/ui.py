@@ -66,7 +66,7 @@ def on_ui_tabs():
 
                             seed_recycleButton = ToolButton(ui.reuse_symbol, tooltip="Reuse seed from last generation")
 
-                        simple_runButton = gr.Button('Generate Simple Image')
+                        simple_runButton = gr.Button('Generate Simple Image', variant="primary")
 
                     with gr.Column():
                         resultImg = gr.Image(label='Result', elem_id='result')
@@ -110,7 +110,7 @@ def on_ui_tabs():
                                     value=1.0,
                                     label='Seed Mix (Crossfade)')
 
-                    mix_runButton = gr.Button('Generate Style Mix')
+                    mix_runButton = gr.Button('Generate Style Mix', variant="primary")
 
                 with gr.Row():
                     with gr.Column():
