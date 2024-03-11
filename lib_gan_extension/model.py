@@ -1,25 +1,39 @@
 from __future__ import annotations
-
+# Standard library imports
 import os
 import pathlib
 import pickle
-# import sys
 import random
-
+from typing import Union
+# Third-party library imports
 import numpy as np
 import torch
 import torch.nn as nn
 import torch_utils
 import dnnlib
+from PIL import Image
+# Internal module imports
+from modules.images import save_image_with_geninfo
+from modules.paths_internal import default_output_dir
+from lib_gan_extension import global_state, file_utils
 
-def xfade(a,b,x):
-    return a*(1.0-x) + b*x
-
+# utility functions       
 class Model:
+
+    @classmethod
+    def newSeed(cls) -> int:
+        return random.randint(0, 0xFFFFFFFF - 1)
+
+    @classmethod
+    def xfade(cls, a,b,x):
+        return a*(1.0-x) + b*x
+
     def __init__(self):
         self.device = None
         self.model_name = None
         self.G = None
+        self.outputRoot = pathlib.Path(__file__) / default_output_dir / "stylegan-images"
+        file_utils.mkdir_p(self.outputRoot)
 
     def _load_model(self, model_name: str) -> nn.Module:
         path = pathlib.Path(__file__).resolve().parents[1] / 'models' / model_name 
@@ -35,7 +49,6 @@ class Model:
         G.eval()
         G.to(self.device)
         return G
-
 
     def w_to_img(self, dlatents: Union[List[torch.Tensor], torch.Tensor], noise_mode: str = 'const') -> np.ndarray:
         """
@@ -59,24 +72,24 @@ class Model:
             z = torch.tensor(z).float().cpu().numpy() # convert to float32 for mac
         return z
 
-    def get_w_from_seed(self, seed: int, truncation_psi: float) -> torch.Tensor:
+    def get_w_from_seed(self, seed: int, psi: float) -> torch.Tensor:
         """Get the dlatent from a random seed, using the truncation trick (this could be optional)"""
         z = self.random_z_dim(seed)
         w = self.G.mapping(torch.from_numpy(z).to(self.device), None)
         w_avg = self.G.mapping.w_avg
-        w = w_avg + (w - w_avg) * truncation_psi
+        w = w_avg + (w - w_avg) * psi
 
         return w
 
-    def get_w_from_mean_z(self, truncation_psi: float) -> torch.Tensor:
+    def get_w_from_mean_z(self, psi: float) -> torch.Tensor:
         """Get the dlatent from the mean z space"""
         w = self.G.mapping(torch.zeros((1, self.G.z_dim)).to(self.device), None)
         w_avg = self.G.mapping.w_avg
-        w = w_avg + (w - w_avg) * truncation_psi
+        w = w_avg + (w - w_avg) * psi
 
         return w
 
-    def get_w_from_mean_w(self, seed: int, truncation_psi: float) -> torch.Tensor:
+    def get_w_from_mean_w(self, seed: int, psi: float) -> torch.Tensor:
         """Get the dlatent of the mean w space"""
         w = self.G.mapping.w_avg.unsqueeze(0).unsqueeze(0).repeat(1, 16, 1).to(self.device)
         return w
@@ -92,61 +105,91 @@ class Model:
             return
         self.model_name = model_name
         self.G = self._load_model(model_name)
+        file_utils.mkdir_p(self.output_path())
 
-    def generate_image(self, seed: int, truncation_psi: float) -> np.ndarray:
-        w = self.get_w_from_seed(seed, truncation_psi)
-        return self.w_to_img(w)[0]
+    def output_path(self):
+        return self.outputRoot / ".".join(self.model_name.split(".")[:-1])
+
+    def generate_image(self, seed: int, psi: float, save: bool=True) -> np.ndarray:
+        filename = f"base-{seed}-{psi}.{global_state.image_format}"
+        path = self.output_path() / filename
+        if path.exists():
+            return Image.open(path)
+        else:
+            w = self.get_w_from_seed(seed, psi)
+            output = self.w_to_img(w)[0]
+            self.save_output_to_file(output, filename, params={'seed': seed, 'psi': psi})
+            return output
+
+    def save_output_to_file(self, output, filename, params: dict = None):
+        path = self.output_path() / filename
+        if not path.exists():
+            print(f"Generated GAN image with {str(params)}")
+            info = {
+                'parameters': {
+                    'model': self.model_name,
+                    **params,
+                    'extension': 'gan-generator',
+                }
+            }
+            image = Image.fromarray(output)
+            save_image_with_geninfo(image, str(info), str(path))
 
     def set_model_and_generate_image(self, device: str, model_name: str, seed: int,
-                                     truncation_psi: float) -> np.ndarray:        
+                                     psi: float) -> np.ndarray:        
         self.set_device(device)
         self.set_model(model_name)
         if seed == -1:
-            seed = random.randint(0, 0xFFFFFFFF - 1)        
-        outputSeedStr = 'Seed: ' + str(seed)
-        print(f"Generating GAN image with {{ seed: {seed}, psi: {truncation_psi} }}")
-        return self.generate_image(seed, truncation_psi), outputSeedStr
+            seed = self.newSeed()
+        seedTxt = 'Seed: ' + str(seed)
+        return self.generate_image(seed, psi), seedTxt
         
     def set_model_and_generate_styles(self, device: str, model_name: str, seed1: int, seed2: int,
-                                     truncation_psi: float, styleDrop: str, style_interp: float) -> np.ndarray:
+                                     psi: float, interpType: str, mix: float) -> np.ndarray:
         self.set_device(device)
         self.set_model(model_name)
-        im1 = self.generate_image(seed1, truncation_psi)
-        im2 = self.generate_image(seed2, truncation_psi)
+
+        if seed1 == -1:
+            seed1 = self.newSeed()
+        img1 = self.generate_image(seed1, psi)
+
+        if seed2 == -1:
+            seed2 = self.newSeed()
+        img2 = self.generate_image(seed2, psi)
+
         w_avg = self.G.mapping.w_avg
         w_list = []
 
         z = self.random_z_dim(seed1)
         w = self.G.mapping(torch.from_numpy(z).to(self.device), None)
-        w = w_avg + (w - w_avg) * truncation_psi
+        w = w_avg + (w - w_avg) * psi
         w_list.append(w)
         
         z = self.random_z_dim(seed2)
         w = self.G.mapping(torch.from_numpy(z).to(self.device), None)
-        w = w_avg + (w - w_avg) * truncation_psi
+        w = w_avg + (w - w_avg) * psi
         w_list.append(w)
 
-
-        if styleDrop == "total":
-            i = style_interp / 2.0  # scaled between 0 and 1
-            w_base = xfade(w_list[0], w_list[1], i)
+        if interpType == "total":
+            i = mix / 2.0  # scaled between 0 and 1
+            w_base = self.xfade(w_list[0], w_list[1], i)
         else:
-            i = style_interp # * 2.0 # input should be btwn 0 and 1, then we multiply by 2 to fit these calculations
+            i = mix # * 2.0 # input should be btwn 0 and 1, then we multiply by 2 to fit these calculations
             if i > 1.0: # mirror across middle
                 w_list = w_list[::-1] # effectively swap the two seeds
                 i = 2.0 - i
             w_base = w_list[0].clone()
-            if styleDrop == "fine":
-                w_base[:,8:,:] = xfade(w_base[:,8:,:], w_list[1][:,8:,:], i)
-            elif styleDrop == "coarse":
-                w_base[:,:7,:] = xfade(w_base[:,:7,:], w_list[1][:,:7,:], i)
+            if interpType == "fine":
+                w_base[:,8:,:] = self.xfade(w_base[:,8:,:], w_list[1][:,8:,:], i)
+            elif interpType == "coarse":
+                w_base[:,:7,:] = self.xfade(w_base[:,:7,:], w_list[1][:,:7,:], i)
 
-        # print(f"mixing w/ style: {styleDrop}, i: {i}")
+        # print(f"mixing w/ style: {interpType}, i: {i}")
      
-        im3 = self.w_to_img(w_base)[0]
+        img3 = self.w_to_img(w_base)[0]
+        filename = f"mix-{seed1}-{seed2}-{mix}-{interpType}.{global_state.image_format}"
+        self.save_output_to_file(img3, filename, params={'seed1': seed1, 'seed2': seed2, 'mix': mix, 'interp': interpType})
         
-        seed1txt =  'Seed 1: ' + str(seed1)
-        seed2txt =  'Seed 2: ' + str(seed2)
-
-        return im1, im2, im3, seed1txt, seed2txt
-        
+        seedTxt1 = 'Seed 1: ' + str(seed1)
+        seedTxt2 = 'Seed 2: ' + str(seed2)
+        return img1, img2, img3, seedTxt1, seedTxt2

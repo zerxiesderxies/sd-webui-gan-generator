@@ -9,3 +9,14 @@ img#visitor-badge {
   display: block;
   margin: auto;
 }
+#device, #models {
+  max-width: 100px;
+}
+
+#output-folder {
+  text-align: center;
+  display: block;
+}
+#open-folder {
+  margin: auto;
+}

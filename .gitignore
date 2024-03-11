@@ -1,4 +1,5 @@
 # Python Compile Files
-*.pyc.DS_Store
-models/*.pkl
+*.pyc
+.DS_Store
+models/**/*.pkl
 **/__pycache__
