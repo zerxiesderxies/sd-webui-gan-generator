@@ -1,12 +1,14 @@
 import os
 from pathlib import Path
 import glob
-
 from typing import Union
 import gradio as gr
-from modules import script_callbacks, shared, ui, ui_components
+from PIL import Image
+
+from modules import script_callbacks, shared, ui, ui_components, images
 from modules.ui_components import ToolButton
-from lib_gan_extension import global_state, file_utils, str_utils
+
+from lib_gan_extension import global_state, file_utils
 from lib_gan_extension.model import Model
 
 ui.swap_symbol = "\U00002194"  # ↔️
@@ -68,11 +70,25 @@ def on_ui_tabs():
                         simple_runButton = gr.Button('Generate Simple Image', variant="primary")
 
                     with gr.Column():
-                        resultImg = gr.Image(label='Result', elem_id='result')
+                        resultImg = gr.Image(label='Result', elem_id='result', sources=['upload','clipboard'], interactive=True, type="filepath")
                         seedTxt = gr.Markdown(label='Output Seed')
                         with gr.Row():
                             seed1_to_mixButton = gr.Button('Send to Seed Mixer › Left')
                             seed2_to_mixButton = gr.Button('Send to Seed Mixer › Right')
+                        # promptTxt = gr.Markdown(label='Hidden File Prompt')
+                        # resultImg.upload(
+                        #     fn=get_params_from_image,
+                        #     inputs=[resultImg],
+                        #     outputs=[seedNum,psiSlider,modelDrop],
+                        #     show_progress=False
+                        # )
+                        dropFile = gr.File(label="", file_count="single", type="binary", visible=True, elem_id="dropfile")
+                        dropFile.change(
+                            fn=get_params_from_image,
+                            inputs=[dropFile,resultImg],
+                            outputs=[resultImg,seedNum,psiSlider,modelDrop,dropFile],
+                            show_progress=False
+                        )
 
             with gr.TabItem('Seed Mixer'):
                 with gr.Row():
@@ -178,4 +194,23 @@ def default_device() -> str:
 def update_image_format():
     global_state.image_format = shared.opts.data.get('gan_generator_image_format', 'jpg')
     print(f"GAN Output Image Format: {global_state.image_format}")
+
+import io
+import ast
+def get_params_from_image(data):
+    p = {'seed': -1, 'psi': 0.7, 'model': default_model()}  
+    # if data:
+    print(f"Loading Image: {img}")
+    with open(img, "rb") as f:
+        data = f.read()
+    img = Image.open(io.BytesIO(data))
+    # img = Image.open(img)
+    print(repr(img))
+    print(img.info)
+    params = images.read_info_from_image(img)#[0]
+    if "gan-generator" in params:
+        print(f"Loading Image: {repr(params)}")
+        d = ast.literal_eval(params)
+        p = d['parameters'] if d.get('parameters') else p
+    return p['seed'], p['psi'], p['model']
 
