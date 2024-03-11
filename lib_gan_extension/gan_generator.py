@@ -241,7 +241,7 @@ class GanGenerator:
         length = size * 2
         cap = int(total_len / 2) - size
         mask = np.array([0] * cap + [1] * length + [0] * cap, dtype=bool)
-        mask = np.roll(mask, offset) # shfit by offset
+        mask = np.roll(mask, offset) # shift by offset
         return mask
 
     @classmethod
