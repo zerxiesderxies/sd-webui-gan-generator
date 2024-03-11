@@ -67,7 +67,7 @@ TODO: Need Workaround
 
 ### User Interface
 
-![MainPage](https://github.com/zerxiesderxies/sd-webui-gan-generator/assets/161509935/8143466c-3861-4535-b01b-eb3bf62eba98)  
+![MainPage](https://github.com/zerxiesderxies/sd-webui-gan-generator/assets/161509935/f57d33d6-4c7d-4318-8eeb-3135c46fe392)
 The `Simple Image Gen` tab handles basic seed to image generation.
 
 1. Under model selection, select your model from the drop down menu. Click refresh to update the model list.
@@ -84,7 +84,7 @@ The `Simple Image Gen` tab handles basic seed to image generation.
 
 #### Seed Mixing
 
-![StyleMixing](https://github.com/zerxiesderxies/sd-webui-gan-generator/assets/161509935/b934563f-dccf-4a28-b111-fe92a480f41b)  
+![StyleMixing](https://github.com/zerxiesderxies/sd-webui-gan-generator/assets/161509935/4ea2c781-df91-48c1-8054-43346cdb862d)
 The `Seed Mixing` tab includes simple seed mixing features. Seed mixing is the process of transferring elements from one image into another. See explanation for further information.
 
 1. Seeds imported from simple gen page, or input your Seed 1 (left) and Seed 2 (right) directly
