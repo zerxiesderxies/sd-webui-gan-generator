@@ -24,7 +24,7 @@ class Model:
 
     @classmethod
     def xfade(cls, a,b,x):
-        return a*(1.0-x) + b*x
+        return a*(1.0-x) + b*x # basic linear interpolation
 
     def __init__(self):
         self.device = None
@@ -180,7 +180,7 @@ class Model:
             case _:
                 mask = str_utils.str2num(interpType)
 
-        w_base = w_list[0].clone()
+        w_base = w_list[0].clone() # transfer onto L image as default
 
         slider_max = 2.0 # FIXME: this is a hack to fix the slider bug where range is stuck at 0-2
         i = mix / slider_max # rescale between 0 and 1
@@ -198,7 +198,7 @@ class Model:
 
         img3 = self.w_to_img(w_base)[0]
         filename = f"mix-{seed1}-{seed2}-{mix}-{interpType}.{global_state.image_format}"
-        self.save_output_to_file(img3, filename, params={'seed1': seed1, 'seed2': seed2, 'mix': i, 'interp': interpType})
+        self.save_output_to_file(img3, filename, params={'seed1': seed1, 'seed2': seed2, 'mix': i, 'mask': interpType})
         
         seedTxt1 = f"Seed 1: {str(seed1)} ({str_utils.num2hex(seed1)})"
         seedTxt2 = f"Seed 2: {str(seed2)} ({str_utils.num2hex(seed2)})"
@@ -221,3 +221,9 @@ class Model:
     @classmethod
     def num2mask(cls, num: int) -> np.ndarray:
         return np.array([x=='1' for x in bin(num)[2:].zfill(16)], dtype=bool)
+
+    @classmethod
+    def jmap(cls, sourceValue, sourceRangeMin, sourceRangeMax, targetRangeMin, targetRangeMax) -> float:
+        if sourceRangeMax == sourceRangeMin:
+            raise ValueError("mapping from a range of zero will produce NaN!")
+        return targetRangeMin + ((targetRangeMax - targetRangeMin) * (sourceValue - sourceRangeMin)) / (sourceRangeMax - sourceRangeMin)

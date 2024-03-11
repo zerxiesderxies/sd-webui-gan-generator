@@ -102,7 +102,7 @@ def on_ui_tabs():
                                 label='Truncation (psi)')  
                 with gr.Row():
                     mix_interp_styleDrop = gr.Dropdown(
-                        choices=["coarse (0xFF00)", "mid (0x0FF0)", "fine (0x00FF)", "total (0xFFFF)"], label="Interpolation Mask", value="coarse (0xFF00)"
+                        choices=["coarse (0xFF00)", "mid (0x0FF0)", "fine (0x00FF)", "total (0xFFFF)", "alt1 (0xF0F0)", "alt2 (0x0F0F)", "alt3 (0xF00F)"], label="Interpolation Mask", value="coarse (0xFF00)"
                     )
                     mix_mixSlider = gr.Slider(-1,1,
                                     step=0.01,
