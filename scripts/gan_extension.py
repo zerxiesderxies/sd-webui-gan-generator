@@ -1,9 +1,8 @@
 import os
 from modules import scripts #, shared
-from lib_gan_extension.model import Model
 import lib_gan_extension.ui
 
-# class GanGeneratorScript(scripts.Script):
+# class GanExtensionScript(scripts.Script):
 #     def __init__(self):
 #         super().__init__()
 

@@ -1,10 +1,11 @@
 from __future__ import annotations
 # Standard library imports
+from typing import Union
 import os
-import pathlib
+import glob
+from pathlib import Path
 import pickle
 import random
-from typing import Union
 # Third-party library imports
 import numpy as np
 import torch
@@ -16,7 +17,32 @@ from PIL import Image
 from modules.images import save_image_with_geninfo
 from modules.paths_internal import default_output_dir
 from lib_gan_extension import global_state, file_utils, str_utils
-class Model:
+from lib_gan_extension.global_state import log
+
+class GanGenerator:
+
+    @classmethod
+    def default_device(cls) -> str:
+        if torch.backends.mps.is_available():
+            default_device = "mps"
+        elif torch.cuda.is_available():
+            default_device = "cuda:0"
+        else:
+            default_device = "cpu"
+        return default_device
+
+    @classmethod
+    def default_model(cls) -> Union[str, None]:
+        return cls.model_list()[0] if cls.model_list() else None
+
+    @classmethod
+    def model_path(cls) -> Path:
+        return Path(__file__).resolve().parents[1] / 'models'
+
+    @classmethod
+    def model_list(cls) -> tuple[str]:
+        files = glob.glob(str(cls.model_path() / "*.pkl"))
+        return [os.path.basename(file) for file in sorted(files, key=lambda file: (os.stat(file).st_mtime, file), reverse=True)]
 
     @classmethod
     def newSeed(cls) -> int:
@@ -26,15 +52,17 @@ class Model:
     def xfade(cls, a,b,x):
         return a*(1.0-x) + b*x # basic linear interpolation
 
-    def __init__(self):
+    def __init__(self):        
+        self.outputRoot = Path(__file__) / default_output_dir / "stylegan-images"
+        file_utils.mkdir_p(self.outputRoot)
         self.device = None
         self.model_name = None
         self.G = None
-        self.outputRoot = pathlib.Path(__file__) / default_output_dir / "stylegan-images"
-        file_utils.mkdir_p(self.outputRoot)
+        self.set_model( self.default_model() )
+        self.set_device( self.default_device() )
 
     def _load_model(self, model_name: str) -> nn.Module:
-        path = pathlib.Path(__file__).resolve().parents[1] / 'models' / model_name 
+        path = Path(__file__).resolve().parents[1] / 'models' / model_name 
         
         # WARNING: Verify StyleGAN3 checkpoints before loading.
         # Safety check needs to be disabled because required classes
@@ -92,11 +120,16 @@ class Model:
         w = self.G.mapping.w_avg.unsqueeze(0).unsqueeze(0).repeat(1, 16, 1).to(self.device)
         return w
     
-    def set_device(self, device='cpu') -> None:
-        if (device == self.device):
+    def set_device(self, device=None) -> None:
+        if device is None:
+            device = self.default_device()
+        elif device == self.device:
             return
         self.device = device
-        self.G = None
+        if self.G is not None:
+            self.G.to(device)
+        log("setting device to " + device)
+        return device
     
     def set_model(self, model_name: str) -> None:
         if model_name == self.model_name and self.G is not None:
@@ -104,6 +137,8 @@ class Model:
         self.model_name = model_name
         self.G = self._load_model(model_name)
         file_utils.mkdir_p(self.output_path())
+        file_utils.touch( self.model_path() / model_name )
+        log("loading model " + model_name)
 
     def output_path(self):
         return self.outputRoot / ".".join(self.model_name.split(".")[:-1])
@@ -122,31 +157,27 @@ class Model:
     def save_output_to_file(self, output, filename, params: dict = None):
         path = self.output_path() / filename
         if not path.exists():
-            print(f"Generated GAN image with {str(params)}")
-            info = {
-                'parameters': {
-                    'model': self.model_name,
-                    **params,
-                    'extension': 'gan-generator',
-                }
-            }
-            image = Image.fromarray(output)
-            save_image_with_geninfo(image, str(info), str(path))
+            log("Generated GAN image with " + str(params))
+        else:
+            log("Updating GAN image with " + str(params))
+        info = {
+            'model': self.model_name,
+            **params,
+            'extension': 'gan-generator',
+        }
+        image = Image.fromarray(output)
+        save_image_with_geninfo(image, str(info), str(path) )
 
-    def set_model_and_generate_image(self, device: str, model_name: str, seed: int,
+
+    def seed_and_generate_image(self, seed: int,
                                      psi: float) -> np.ndarray:        
-        self.set_device(device)
-        self.set_model(model_name)
         if seed == -1:
             seed = self.newSeed()
         seedTxt = 'Seed: ' + str(seed)
         return self.generate_image(seed, psi), seedTxt
         
-    def set_model_and_generate_styles(self, device: str, model_name: str, seed1: int, seed2: int,
+    def seed_and_generate_mix(self, seed1: int, seed2: int,
                                      psi: float, interpType: str, mix: float) -> np.ndarray:
-        self.set_device(device)
-        self.set_model(model_name)
-
         if seed1 == -1:
             seed1 = self.newSeed()
         img1 = self.generate_image(seed1, psi)

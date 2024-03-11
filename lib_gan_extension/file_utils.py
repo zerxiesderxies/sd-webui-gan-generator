@@ -13,6 +13,10 @@ def mkdir_p(path):
         # Handle other errors
         print(f"Error creating directory: {e}")
 
+def touch(filename: str) -> None:
+    with open(filename, 'a'):
+        os.utime(filename, None)  # Update the modification timestamp
+
 def open_folder(f, images=None, index=None):
     if shared.cmd_opts.hide_ui_dir_config:
         return
@@ -50,3 +54,4 @@ Requested path was: {f}
         sp.Popen(["wsl-open", path])
     else:
         sp.Popen(["xdg-open", path])
+

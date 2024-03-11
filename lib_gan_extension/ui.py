@@ -1,24 +1,24 @@
 import os
-from pathlib import Path
-import glob
+import io
+import ast
 from typing import Union
 import gradio as gr
+import torch
 from PIL import Image
 
 from modules import script_callbacks, shared, ui, ui_components, images
 from modules.ui_components import ToolButton
 
 from lib_gan_extension import global_state, file_utils
-from lib_gan_extension.model import Model
+from lib_gan_extension.gan_generator import GanGenerator
+from lib_gan_extension.global_state import log
 
 ui.swap_symbol = "\U00002194"  # ↔️
 ui.lucky_symbol = "\U0001F340"  # 🍀
 ui.folder_symbol = "\U0001F4C1"  # 📁
 
 
-model = Model()
-
-model_path = Path(__file__).resolve().parents[1] / "models"
+model = GanGenerator()
 
 DESCRIPTION = '''# StyleGAN Image Generator
 
@@ -33,13 +33,15 @@ def on_ui_tabs():
     with gr.Blocks(analytics_enabled=False, css='style.css') as ui_component:
         gr.Markdown(DESCRIPTION)
         with gr.Row():
-            modelDrop = gr.Dropdown(choices = update_model_list(), value=default_model, label="Model Selection", info="Place into models directory", elem_id="models")
-            modelDrop.input(fn=touch_model_file, inputs=[modelDrop], outputs=[])
+            modelDrop = gr.Dropdown(choices = model.model_list(), value=model.model_list()[0], label="Model Selection", info="Place into models directory", elem_id="models")
+            modelDrop.input(fn=model.set_model, inputs=[modelDrop], outputs=[])
 
             model_refreshButton = ToolButton(value=ui.refresh_symbol, tooltip="Refresh")
-            model_refreshButton.click(fn=lambda: gr.Dropdown.update(choices=update_model_list()),outputs=modelDrop)
+            model_refreshButton.click(fn=lambda: gr.Dropdown.update(choices=model.model_list()),outputs=modelDrop)
 
-            deviceDrop = gr.Dropdown(choices = ['cpu','cuda:0','mps'], value=default_device, label='Generation Device', info='Generate using CPU or GPU', elem_id="device")
+            deviceDrop = gr.Dropdown(choices = ['cpu','cuda:0','mps'], value=model.default_device(), label='Generation Device', info='Generate using CPU or GPU', elem_id="device")
+            deviceDrop.input(fn=model.set_device, inputs=[deviceDrop], outputs=[])
+
 
             with gr.Group():
                 with gr.Column():
@@ -71,24 +73,17 @@ def on_ui_tabs():
 
                     with gr.Column():
                         resultImg = gr.Image(label='Result', elem_id='result', sources=['upload','clipboard'], interactive=True, type="filepath")
+                        resultImg.upload(
+                            fn=get_params_from_image,
+                            inputs=[resultImg],
+                            outputs=[seedNum,psiSlider,modelDrop],
+                            show_progress=False
+                        )
+
                         seedTxt = gr.Markdown(label='Output Seed')
                         with gr.Row():
                             seed1_to_mixButton = gr.Button('Send to Seed Mixer › Left')
                             seed2_to_mixButton = gr.Button('Send to Seed Mixer › Right')
-                        # promptTxt = gr.Markdown(label='Hidden File Prompt')
-                        # resultImg.upload(
-                        #     fn=get_params_from_image,
-                        #     inputs=[resultImg],
-                        #     outputs=[seedNum,psiSlider,modelDrop],
-                        #     show_progress=False
-                        # )
-                        dropFile = gr.File(label="", file_count="single", type="binary", visible=True, elem_id="dropfile")
-                        dropFile.change(
-                            fn=get_params_from_image,
-                            inputs=[dropFile,resultImg],
-                            outputs=[resultImg,seedNum,psiSlider,modelDrop,dropFile],
-                            show_progress=False
-                        )
 
             with gr.TabItem('Seed Mixer'):
                 with gr.Row():
@@ -139,8 +134,8 @@ def on_ui_tabs():
 
         seed_recycleButton.click(fn=copy_seed,show_progress=False,inputs=[seedTxt],outputs=[seedNum])
 
-        simple_runButton.click(fn=model.set_model_and_generate_image,
-                        inputs=[deviceDrop, modelDrop, seedNum, psiSlider],
+        simple_runButton.click(fn=model.seed_and_generate_image,
+                        inputs=[seedNum, psiSlider],
                         outputs=[resultImg, seedTxt])
 
         seed1_to_mixButton.click(fn=copy_seed, inputs=[seedTxt],outputs=[mix_seed1_Num])
@@ -149,8 +144,8 @@ def on_ui_tabs():
         mix_seed1_recycleButton.click(fn=copy_seed,show_progress=False,inputs=[mix_seed1_Txt],outputs=[mix_seed1_Num])
         mix_seed2_recycleButton.click(fn=copy_seed,show_progress=False,inputs=[mix_seed2_Txt],outputs=[mix_seed2_Num])
 
-        mix_runButton.click(fn=model.set_model_and_generate_styles,
-                        inputs=[deviceDrop, modelDrop, mix_seed1_Num, mix_seed2_Num, mix_psiSlider, mix_interp_styleDrop, mix_mixSlider],
+        mix_runButton.click(fn=model.seed_and_generate_mix,
+                        inputs=[mix_seed1_Num, mix_seed2_Num, mix_psiSlider, mix_interp_styleDrop, mix_mixSlider],
                         outputs=[mix_seed1_Img, mix_seed2_Img, mix_styleImg, mix_seed1_Txt, mix_seed2_Txt])
 
         return [(ui_component, "GAN Generator", "gan_generator_tab")]
@@ -169,48 +164,45 @@ script_callbacks.on_ui_settings(on_ui_settings)
 def copy_seed(seedTxt) -> Union[int, None]:
     return str_utils.str2num(seedTxt)
 
-def update_model_list() -> tuple[str]:
-    files = glob.glob(str(model_path / "*.pkl"))
-    return [os.path.basename(file) for file in sorted(files, key=lambda file: (os.stat(file).st_mtime, file), reverse=True)]
-
-def default_model() -> Union[str, None]:
-    return update_model_list()[0] if update_model_list() else None
-
-def touch_model_file(modelDrop) -> None:
-    filename = str(model_path / modelDrop)
-    with open(filename, 'a'):
-        os.utime(filename, None)  # Update the modification timestamp
-
-import torch
-def default_device() -> str:
-    if torch.backends.mps.is_available():
-        default_device = "mps"
-    elif torch.cuda.is_available():
-        default_device = "cuda:0"
-    else:
-        default_device = "cpu"
-    return default_device
-
 def update_image_format():
     global_state.image_format = shared.opts.data.get('gan_generator_image_format', 'jpg')
-    print(f"GAN Output Image Format: {global_state.image_format}")
+    log(f"output format: {global_state.image_format}")
 
-import io
-import ast
-def get_params_from_image(data):
-    p = {'seed': -1, 'psi': 0.7, 'model': default_model()}  
-    # if data:
-    print(f"Loading Image: {img}")
-    with open(img, "rb") as f:
-        data = f.read()
-    img = Image.open(io.BytesIO(data))
-    # img = Image.open(img)
-    print(repr(img))
-    print(img.info)
-    params = images.read_info_from_image(img)#[0]
-    if "gan-generator" in params:
-        print(f"Loading Image: {repr(params)}")
-        d = ast.literal_eval(params)
-        p = d['parameters'] if d.get('parameters') else p
-    return p['seed'], p['psi'], p['model']
+def get_params_from_image(img):
+    img = Image.open(img)
+    seed,psi,model_name = -1, 0.7, default_model()
+    p = img.info
+    log(f"image info: {repr(p)}")    
+    if "gan-generator" in str(p):        
+        # some weird stuff here for for legacy images with bad metadata
+        if isinstance( p.get('parameters'), str ):
+            p['parameters'] = ast.literal_eval(p.get('parameters'))
+        p = peel_parameters( p )
+        log(f"loading image params: {repr(p)}")
+        seed = p.get('seed',seed)
+        psi = p.get('psi',psi)
+        model_name = p.get('model',model_name)
+        # model.generate_image(seed: int,
+        
+    return seed, psi, model_name
 
+def peel_parameters(data): # recursively peel 'parameters' from nested dict
+    if isinstance(data, dict):
+        if 'parameters' in data:
+            return peel_parameters(data['parameters'])
+        return {k: peel_parameters(v) for k, v in data.items()}
+    return data
+
+# monkey patch gradio to preserve exif data in jpegs
+# import gradio.processing_utils as grpu
+# def encode_pil_to_bytes(pil_image, format="png"):
+#     with io.BytesIO() as output_bytes:
+#         if format == "png":
+#             save_params["pnginfo"] = grpu.get_pil_metadata(pil_image)
+#         else:
+#             save_params["exif"] = pil_image.info.get('exif', None)
+#         pil_image.save(output_bytes, format, **save_params)
+#         return output_bytes.getvalue()
+
+# gr.processing_utils.encode_pil_to_bytes = encode_pil_to_bytes 
+# log("gan_generator: monkeypatched gradio.encode_pil_to_bytes")
