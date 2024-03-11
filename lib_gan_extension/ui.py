@@ -170,7 +170,7 @@ def update_image_format():
 
 def get_params_from_image(img):
     img = Image.open(img)
-    seed,psi,model_name = -1, 0.7, default_model()
+    seed,psi,model_name = -1, 0.7, model.default_model()
     p = img.info
     log(f"image info: {repr(p)}")    
     if "gan-generator" in str(p):        
