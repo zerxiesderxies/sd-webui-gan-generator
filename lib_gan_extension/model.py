@@ -125,9 +125,15 @@ class Model:
         path = self.output_path() / filename
         if not path.exists():
             print(f"Generated GAN image with {str(params)}")
-            info = { 'extension': 'gan-generator', 'model': self.model_name }
+            info = {
+                'parameters': {
+                    'model': self.model_name,
+                    **params,
+                    'extension': 'gan-generator',
+                }
+            }
             image = Image.fromarray(output)
-            save_image_with_geninfo(image, str({**info, **params}), str(path))
+            save_image_with_geninfo(image, str(info), str(path))
 
     def set_model_and_generate_image(self, device: str, model_name: str, seed: int,
                                      psi: float) -> np.ndarray:        
