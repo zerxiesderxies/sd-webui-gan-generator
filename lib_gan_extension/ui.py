@@ -9,7 +9,7 @@ from PIL import Image
 from modules import script_callbacks, shared, ui, ui_components, images
 from modules.ui_components import ToolButton
 
-from lib_gan_extension import global_state, file_utils
+from lib_gan_extension import global_state, file_utils, str_utils
 from lib_gan_extension.gan_generator import GanGenerator
 from lib_gan_extension.global_state import log
 
@@ -57,12 +57,12 @@ def on_ui_tabs():
             with gr.TabItem('Simple Image Gen'):
                 with gr.Row():
                     with gr.Column():
-                        psiSlider = gr.Slider(-1,1,
+                        psiSlider = gr.Slider(lambda:-1.0, 1.0,
                                         step=0.05,
                                         value=0.7,
                                         label='Truncation (psi)')
                         with gr.Row():
-                            seedNum = gr.Number(label='Seed', value=-1, min_width=150, precision=0)
+                            seedNum = gr.Number(label='Seed', value=lambda: -1, min_width=150, precision=0)
 
                             seed_randButton = ToolButton(ui.random_symbol, tooltip="Set seed to -1, which will cause a new random number to be used every time")
                             seed_randButton.click(fn=lambda: seedNum.update(value=-1), show_progress=False, inputs=[], outputs=[seedNum])
@@ -87,7 +87,7 @@ def on_ui_tabs():
 
             with gr.TabItem('Seed Mixer'):
                 with gr.Row():
-                    mix_seed1_Num = gr.Number(label='Seed 1', value=-1, min_width=150, precision=0)
+                    mix_seed1_Num = gr.Number(label='Seed 1', value=lambda: -1, min_width=150, precision=0)
 
                     mix_seed1_luckyButton = ToolButton(ui.lucky_symbol, tooltip="Roll generate a new seed")
                     mix_seed1_luckyButton.click(fn=lambda: mix_seed1_Num.update(value=GanGenerator.newSeed()), show_progress=False, inputs=[], outputs=[mix_seed1_Num])
@@ -97,7 +97,7 @@ def on_ui_tabs():
 
                     mix_seed1_recycleButton = ToolButton(ui.reuse_symbol, tooltip="Reuse seed from last generation")
 
-                    mix_seed2_Num = gr.Number(label='Seed 2', value=-1, min_width=150, precision=0)
+                    mix_seed2_Num = gr.Number(label='Seed 2', value=lambda: -1, min_width=150, precision=0)
 
                     mix_seed2_luckyButton = ToolButton(ui.lucky_symbol, tooltip="Roll generate a new seed")
                     mix_seed2_luckyButton.click(fn=lambda: mix_seed2_Num.update(value=GanGenerator.newSeed()), show_progress=False, inputs=[], outputs=[mix_seed2_Num])
@@ -112,7 +112,7 @@ def on_ui_tabs():
                                 value=0.7,
                                 label='Truncation (psi)')  
                 with gr.Row():
-                    mix_interp_styleDrop = gr.Dropdown(
+                    mix_maskDrop = gr.Dropdown(
                         choices=["coarse (0xFF00)", "mid (0x0FF0)", "fine (0x00FF)", "total (0xFFFF)", "alt1 (0xF0F0)", "alt2 (0x0F0F)", "alt3 (0xF00F)"], label="Interpolation Mask", value="coarse (0xFF00)"
                     )
                     mix_mixSlider = gr.Slider(-1,1,
@@ -124,13 +124,31 @@ def on_ui_tabs():
 
                 with gr.Row():
                     with gr.Column():
-                        mix_seed1_Img = gr.Image(label='Seed 1 Image')
+                        mix_seed1_Img = gr.Image(label='Seed 1 Image',sources=['upload','clipboard'], interactive=True, type="filepath")
                         mix_seed1_Txt = gr.Markdown(label='Seed 1', value="")
+                        mix_seed1_Img.upload(
+                            fn=get_seed_from_image,
+                            inputs=[mix_seed1_Img],
+                            outputs=[mix_seed1_Num],
+                            show_progress=False
+                        )
                     with gr.Column():
-                        mix_styleImg = gr.Image(label='Style Mixed Image')
+                        mix_styleImg = gr.Image(label='Style Mixed Image', sources=['upload','clipboard'], interactive=True, type="filepath")
+                        mix_styleImg.upload(
+                            fn=get_mix_params_from_image,
+                            inputs=[mix_styleImg],
+                            outputs=[mix_seed1_Num, mix_seed2_Num, mix_mixSlider, mix_maskDrop, modelDrop],
+                            show_progress=False
+                        )
                     with gr.Column():
-                        mix_seed2_Img = gr.Image(label='Seed 2 Image')
+                        mix_seed2_Img = gr.Image(label='Seed 2 Image', sources=['upload','clipboard'], interactive=True, type="filepath")
                         mix_seed2_Txt = gr.Markdown(label='Seed 2', value="")
+                        mix_seed2_Img.upload(
+                            fn=get_seed_from_image,
+                            inputs=[mix_seed2_Img],
+                            outputs=[mix_seed2_Num],
+                            show_progress=False
+                        )
 
         seed_recycleButton.click(fn=copy_seed,show_progress=False,inputs=[seedTxt],outputs=[seedNum])
 
@@ -145,7 +163,7 @@ def on_ui_tabs():
         mix_seed2_recycleButton.click(fn=copy_seed,show_progress=False,inputs=[mix_seed2_Txt],outputs=[mix_seed2_Num])
 
         mix_runButton.click(fn=model.seed_and_generate_mix,
-                        inputs=[mix_seed1_Num, mix_seed2_Num, mix_psiSlider, mix_interp_styleDrop, mix_mixSlider],
+                        inputs=[mix_seed1_Num, mix_seed2_Num, mix_psiSlider, mix_maskDrop, mix_mixSlider],
                         outputs=[mix_seed1_Img, mix_seed2_Img, mix_styleImg, mix_seed1_Txt, mix_seed2_Txt])
 
         return [(ui_component, "GAN Generator", "gan_generator_tab")]
@@ -168,23 +186,46 @@ def update_image_format():
     global_state.image_format = shared.opts.data.get('gan_generator_image_format', 'jpg')
     log(f"output format: {global_state.image_format}")
 
-def get_params_from_image(img):
+def get_params_from_image(img) -> tuple[int,float,str]:
     img = Image.open(img)
     seed,psi,model_name = -1, 0.7, model.default_model()
     p = img.info
-    log(f"image info: {repr(p)}")    
+    # log(f"image info: {repr(p)}")    
     if "gan-generator" in str(p):        
         # some weird stuff here for for legacy images with bad metadata
         if isinstance( p.get('parameters'), str ):
             p['parameters'] = ast.literal_eval(p.get('parameters'))
         p = peel_parameters( p )
         log(f"loading image params: {repr(p)}")
-        seed = p.get('seed',seed)
+        seed = p.get('seed', p.get('seed1',seed))
         psi = p.get('psi',psi)
         model_name = p.get('model',model_name)
-        # model.generate_image(seed: int,
         
     return seed, psi, model_name
+
+def get_seed_from_image(img) -> int:
+    return get_params_from_image(img)[0]
+        
+def get_mix_params_from_image(img) -> tuple[int,int,float,str,str]:
+    seed1,seed2,mix = -1, -1, 0
+    psi,mask,model_name = 0.7, "total (0xFFFF)", model.default_model()
+
+    img = Image.open(img)
+    p = img.info
+    # log(f"image info: {repr(p)}")
+    if "gan-generator" in str(p):
+        # some weird stuff here for for legacy images with bad metadata
+        if isinstance( p.get('parameters'), str ):
+            p['parameters'] = ast.literal_eval(p.get('parameters'))
+        p = peel_parameters( p )
+        log(f"loading image params: {repr(p)}")
+        seed1 = p.get('seed1',seed1)
+        seed2 = p.get('seed2',seed2)
+        mix = p.get('mix',mix)
+        psi = p.get('psi',psi)
+        mask = p.get('mask',mask)
+        model_name = p.get('model',model_name)
+    return seed1, seed2, mix, mask, model_name
 
 def peel_parameters(data): # recursively peel 'parameters' from nested dict
     if isinstance(data, dict):
