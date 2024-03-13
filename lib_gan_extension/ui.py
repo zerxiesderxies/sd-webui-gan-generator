@@ -70,7 +70,7 @@ def on_ui_tabs():
                         resultImg.upload(
                             fn=get_params_from_image,
                             inputs=[resultImg],
-                            outputs=[seedNum,psiSlider,modelDrop],
+                            outputs=[seedNum,psiSlider],
                             show_progress=False
                         )
                         seedTxt = gr.Markdown(label='Output Seed')
@@ -130,7 +130,7 @@ def on_ui_tabs():
                             mix_styleImg.upload(
                                 fn=get_mix_params_from_image,
                                 inputs=[mix_styleImg],
-                                outputs=[mix_seed1_Num, mix_seed2_Num, mix_mixSlider, mix_maskDrop, modelDrop],
+                                outputs=[mix_seed1_Num, mix_seed2_Num, mix_mixSlider, mix_maskDrop],
                                 show_progress=False
                             )
                         with gr.Column():
@@ -215,7 +215,7 @@ def update_image_padding():
 def get_seed_from_image(img) -> int:
     return get_params_from_image(img)[0]
 
-def get_params_from_image(img) -> tuple[int,float,str]:
+def get_params_from_image(img) -> tuple[int,float]:
     seed,psi,model_name = -1, 0.7, default_model()
     p = metadata.parse_params_from_image(img)
     if p is not None:
@@ -223,11 +223,10 @@ def get_params_from_image(img) -> tuple[int,float,str]:
         seed = p.get('seed', p.get('seed1',seed))
         psi = p.get('psi',psi)
         model_name = p.get('model',model_name)
-        # model.generate_image(seed: int,
          
-    return seed, psi, model_name
+    return seed, psi #, model_name
  
-def get_mix_params_from_image(img) -> tuple[int,int,float,str,str]:
+def get_mix_params_from_image(img) -> tuple[int,int,float,str]:
     seed1,seed2,mix = -1, -1, 0
     psi,mask,model_name = 0.7, "total (0xFFFF)", default_model()
 
@@ -240,5 +239,5 @@ def get_mix_params_from_image(img) -> tuple[int,int,float,str,str]:
         mask = p.get('mask',mask)
         model_name = p.get('model',model_name)
 
-    return seed1, seed2, mix, mask, model_name
+    return seed1, seed2, mix, mask #, model_name
 
