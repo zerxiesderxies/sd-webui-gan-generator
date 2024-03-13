@@ -62,7 +62,7 @@ def on_ui_tabs():
                                         value=0.7,
                                         label='Truncation (psi)')
                         with gr.Row():
-                            seedNum = gr.Number(label='Seed', value=-1, min_width=150, precision=0)
+                            seedNum = gr.Number(label='Seed', value=lambda: -1, min_width=150, precision=0)
 
                             seed_randButton = ToolButton(ui.random_symbol, tooltip="Set seed to -1, which will cause a new random number to be used every time")
                             seed_randButton.click(fn=lambda: seedNum.update(value=-1), show_progress=False, inputs=[], outputs=[seedNum])
@@ -80,7 +80,7 @@ def on_ui_tabs():
 
             with gr.TabItem('Seed Mixer'):
                 with gr.Row():
-                    mix_seed1_Num = gr.Number(label='Seed 1', value=-1, min_width=150, precision=0)
+                    mix_seed1_Num = gr.Number(label='Seed 1', value=lambda: -1, min_width=150, precision=0)
 
                     mix_seed1_luckyButton = ToolButton(ui.lucky_symbol, tooltip="Roll generate a new seed")
                     mix_seed1_luckyButton.click(fn=lambda: mix_seed1_Num.update(value=Model.newSeed()), show_progress=False, inputs=[], outputs=[mix_seed1_Num])
@@ -90,7 +90,7 @@ def on_ui_tabs():
 
                     mix_seed1_recycleButton = ToolButton(ui.reuse_symbol, tooltip="Reuse seed from last generation")
 
-                    mix_seed2_Num = gr.Number(label='Seed 2', value=-1, min_width=150, precision=0)
+                    mix_seed2_Num = gr.Number(label='Seed 2', value=lambda: -1, min_width=150, precision=0)
 
                     mix_seed2_luckyButton = ToolButton(ui.lucky_symbol, tooltip="Roll generate a new seed")
                     mix_seed2_luckyButton.click(fn=lambda: mix_seed2_Num.update(value=Model.newSeed()), show_progress=False, inputs=[], outputs=[mix_seed2_Num])
@@ -105,7 +105,7 @@ def on_ui_tabs():
                                 value=0.7,
                                 label='Truncation (psi)')  
                 with gr.Row():
-                    mix_interp_styleDrop = gr.Dropdown(
+                    mix_maskDrop = gr.Dropdown(
                         choices=["coarse (0xFF00)", "mid (0x0FF0)", "fine (0x00FF)", "total (0xFFFF)", "alt1 (0xF0F0)", "alt2 (0x0F0F)", "alt3 (0xF00F)"], label="Interpolation Mask", value="coarse (0xFF00)"
                     )
                     mix_mixSlider = gr.Slider(-1,1,
@@ -124,6 +124,12 @@ def on_ui_tabs():
                     with gr.Column():
                         mix_seed2_Img = gr.Image(label='Seed 2 Image')
                         mix_seed2_Txt = gr.Markdown(label='Seed 2', value="")
+                        mix_seed2_Img.upload(
+                            fn=get_seed_from_image,
+                            inputs=[mix_seed2_Img],
+                            outputs=[mix_seed2_Num],
+                            show_progress=False
+                        )
 
         seed_recycleButton.click(fn=copy_seed,show_progress=False,inputs=[seedTxt],outputs=[seedNum])
 

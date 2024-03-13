@@ -56,8 +56,6 @@ class Model:
         assert isinstance(dlatents, torch.Tensor), f'dlatents should be a torch.Tensor!: "{type(dlatents)}"'
         if len(dlatents.shape) == 2:
             dlatents = dlatents.unsqueeze(0)  # An individual dlatent => [1, G.mapping.num_ws, G.mapping.w_dim]
-        # if not isinstance(dlatents, list):
-        #     dlatents = [dlatents] # convert to array if an individual dlatent e.g. [1, G.mapping.num_ws, G.mapping.w_dim]
         try:
             img = self.G.synthesis(dlatents, noise_mode=noise_mode)
         except:
