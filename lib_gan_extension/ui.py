@@ -42,7 +42,7 @@ def on_ui_tabs():
             padFactorSlider = gr.Slider(1,2,
                             step=0.05,
                             value=1.5,
-                            label='Image Resize Factor', info="Image scale factor. If > 1, will pad with black border. Useful for zoomed in images")
+                            label='Image Padding Factor', info="Resizes image. If > 1, will pad with black border. Useful for zoomed-in faces.")
             with gr.Group():
                 with gr.Column():
                     gr.Markdown(label='Output Folder', value="Output folder", elem_id="output-folder")
