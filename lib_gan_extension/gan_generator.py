@@ -21,18 +21,18 @@ class GanGenerator:
 
     ## methods called by UI
     def generate_image_from_ui(self, device: str, model_name: str, seed: int,
-                                     psi: float, pad: float) -> np.ndarray:        
+                                     psi: float) -> np.ndarray:        
         self.prepare_model(model_name, device)
 
         if seed == -1:
             seed = self.newSeed()
         seedTxt = 'Seed: ' + str(seed)
 
-        return self.generate_image(seed, psi, pad), seedTxt
+        return self.generate_image(seed, psi, global_state.image_pad), seedTxt
         
 
     def generate_mix_from_ui(self, device: str, model_name: str, seed1: int, seed2: int,
-                                     psi: float, interpType: str, mix: float, pad: float) -> np.ndarray:
+                                     psi: float, interpType: str, mix: float) -> np.ndarray:
         self.prepare_model(model_name, device)
 
         if seed1 == -1:
@@ -40,7 +40,7 @@ class GanGenerator:
         if seed2 == -1:
             seed2 = self.newSeed()
 
-        img1, img2, img3 = self.generate_image_mix(seed1, seed2, psi, interpType, mix, pad)
+        img1, img2, img3 = self.generate_image_mix(seed1, seed2, psi, interpType, mix, global_state.image_pad)
         seedTxt1 = f"Seed 1: {str(seed1)} ({str_utils.num2hex(seed1)})"
         seedTxt2 = f"Seed 2: {str(seed2)} ({str_utils.num2hex(seed2)})"
  
@@ -136,9 +136,9 @@ class GanGenerator:
             w = p.get('tensor')
             if w is not None:
                 w = str_utils.str2tensor(w).to(self.device)
-                logger(f"Tensor found in metadata: {w.shape}")
+                # logger(f"Tensor found in metadata: {w.shape}")
             else:
-                logger("Tensor not found... regenerating")
+                # logger("Tensor not found... regenerating")
                 _ , w = self.generate_base_image(**params)
             msg += " (cached on disk)"
 

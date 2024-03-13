@@ -37,10 +37,6 @@ def on_ui_tabs():
 
             deviceDrop = gr.Dropdown(choices = ['cpu','cuda:0','mps'], value=default_device, label='Generation Device', info='Generate using CPU or GPU', elem_id="device")
             
-            padFactorSlider = gr.Slider(1,2,
-                            step=0.05,
-                            value=1.5,
-                            label='Image Padding Factor', info="Resizes image. If > 1, will pad with black border. Useful for zoomed-in faces.")
             with gr.Group():
                 with gr.Column():
                     gr.Markdown(label='Output Folder', value="Output folder", elem_id="output-folder")
@@ -150,7 +146,7 @@ def on_ui_tabs():
         seed_recycleButton.click(fn=copy_seed,show_progress=False,inputs=[seedTxt],outputs=[seedNum])
 
         simple_runButton.click(fn=model.generate_image_from_ui,
-                        inputs=[deviceDrop, modelDrop, seedNum, psiSlider, padFactorSlider],
+                        inputs=[deviceDrop, modelDrop, seedNum, psiSlider],
                         outputs=[resultImg, seedTxt])
 
         seed1_to_mixButton.click(fn=copy_seed, inputs=[seedTxt],outputs=[mix_seed1_Num])
@@ -160,7 +156,7 @@ def on_ui_tabs():
         mix_seed2_recycleButton.click(fn=copy_seed,show_progress=False,inputs=[mix_seed2_Txt],outputs=[mix_seed2_Num])
 
         mix_runButton.click(fn=model.generate_mix_from_ui,
-                        inputs=[deviceDrop, modelDrop, mix_seed1_Num, mix_seed2_Num, mix_psiSlider, mix_maskDrop, mix_mixSlider, padFactorSlider],
+                        inputs=[deviceDrop, modelDrop, mix_seed1_Num, mix_seed2_Num, mix_psiSlider, mix_maskDrop, mix_mixSlider],
                         outputs=[mix_seed1_Img, mix_seed2_Img, mix_styleImg, mix_seed1_Txt, mix_seed2_Txt])
 
         return [(ui_component, "GAN Generator", "gan_generator_tab")]
@@ -170,9 +166,14 @@ script_callbacks.on_ui_tabs(on_ui_tabs)
 def on_ui_settings():
     global_state.init()
     section = ('gan_generator', 'StyleGAN Image Generator')
+
     shared.opts.add_option('gan_generator_image_format',
         shared.OptionInfo("jpg", "File format for image outputs", gr.Dropdown, {"choices": ["jpg", "png"]}, section=section))
     shared.opts.onchange('gan_generator_image_format', update_image_format)
+
+    shared.opts.add_option('gan_generator_image_pad',
+        shared.OptionInfo(1.0, "Image padding factor", gr.Slider, {"minimum":1,"maximum":2,"step":0.05,"info":"Resizes image. If > 1, will pad with black border. Useful for zoomed-in faces."}, section=section))
+    shared.opts.onchange('gan_generator_image_pad', update_image_padding)
     
 script_callbacks.on_ui_settings(on_ui_settings)
 
@@ -203,8 +204,11 @@ def default_device() -> str:
 
 def update_image_format():
     global_state.image_format = shared.opts.data.get('gan_generator_image_format', 'jpg')
-
     logger(f"Output format: {global_state.image_format}")
+
+def update_image_padding():
+    global_state.image_pad = shared.opts.data.get('gan_generator_image_pad', '1.0')
+    logger(f"Output padding: {global_state.image_pad}")
 
 
 # fetch metadata from drag-and-drop (gr.Image.upload callback)
