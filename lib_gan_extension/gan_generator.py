@@ -65,7 +65,7 @@ class GanGenerator:
 
     def generate_image(self, seed: int, psi: float, pad: float=1.0) -> Image.Image:
         params = {'seed': seed, 'psi': psi}
-        output, _ = self.find_or_generate_base_image(**params)
+        output = self.find_or_generate_base_image(**params)
         if pad != 1.0:
             output = self.pad_image(output, pad)
             padded_path = f"base-{seed}-{psi}-pad{pad}.{global_state.image_format}"
@@ -111,12 +111,12 @@ class GanGenerator:
 
         output = self.find_image_if_exists(self.base_image_path(**params))
         if output is None:
-            output, w = self.generate_base_image(**params)
+            output, _ = self.generate_base_image(**params)
         else:
             msg += " (cached on disk)"
         logger(msg)
 
-        return output, w
+        return output
 
     def find_image_if_exists(self, filename: str) -> Union[None, Image.Image]:
         path = self.output_path() / filename
@@ -134,11 +134,9 @@ class GanGenerator:
     def save_image_to_file(self, image: Image.Image, filename: str, params: dict = None):
         path = self.output_path() / filename
         info = {
-            'parameters': {
-                'model': self.model_name,
-                **params,
-                'extension': 'gan-generator',
-            }
+            'model': self.model_name,
+            **params,
+            'extension': 'gan-generator',
         }
         save_image_with_geninfo(image, str(info), str(path))
 
