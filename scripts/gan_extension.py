@@ -1,9 +1,13 @@
-import os
+# from __future__ import annotations
+# from typing import Union
+# from pathlib import Path
+# import numpy as np
+# from PIL import Image
+
 from modules import scripts #, shared
-from lib_gan_extension.model import Model
 import lib_gan_extension.ui
 
-# class GanGeneratorScript(scripts.Script):
+# class GanExtensionScript(scripts.Script):
 #     def __init__(self):
 #         super().__init__()
 

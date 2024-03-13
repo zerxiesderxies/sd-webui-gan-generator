@@ -1,7 +1,11 @@
 import os
-from modules import shared
 import platform
 import subprocess as sp
+from pathlib import Path
+
+from modules import shared
+
+model_path = Path(__file__).resolve().parents[1] / "models"
 
 def mkdir_p(path):
     try:
@@ -12,6 +16,10 @@ def mkdir_p(path):
     except OSError as e:
         # Handle other errors
         print(f"Error creating directory: {e}")
+
+def touch(filename: str) -> None:
+    with open(filename, 'a'):
+        os.utime(filename, None)  # Update the modification timestamp
 
 def open_folder(f, images=None, index=None):
     if shared.cmd_opts.hide_ui_dir_config:
@@ -50,3 +58,4 @@ Requested path was: {f}
         sp.Popen(["wsl-open", path])
     else:
         sp.Popen(["xdg-open", path])
+
