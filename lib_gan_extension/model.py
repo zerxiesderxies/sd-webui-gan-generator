@@ -107,26 +107,42 @@ class Model:
 
     def output_path(self):
         return self.outputRoot / ".".join(self.model_name.split(".")[:-1])
-        
-    def pad_image(self, image, pad):
-        resolution = self.G.img_resolution
-        padImage = Image.new(image.mode, (int(resolution*pad), int(resolution*pad)), (0, 0, 0))
-        padImage.paste(image, box=(int((resolution*pad-resolution)/2),int((resolution*pad-resolution)/2)))    
-        return padImage
-        
-    def generate_image(self, seed: int, psi: float, pad: float, save: bool=True) -> np.ndarray:
-        filename = f"base-{seed}-{psi}-{pad}.{global_state.image_format}"
+
+    def find_image_if_exists(self, filename: str) -> Union[None, Image.Image]:
         path = self.output_path() / filename
         if path.exists():
             return Image.open(path)
-        else:
-            w = self.get_w_from_seed(seed, psi)
-            output = Image.fromarray(self.w_to_img(w)[0])
-            image = self.pad_image(output, pad)
-            self.save_image_to_file(image, filename, params={'seed': seed, 'psi': psi, 'pad': pad})
-            return image
+        return None
 
-    def save_image_to_file(self, image, filename, params: dict = None):
+    def pad_image(self, image: Image.Image, pad=float) -> Image.Image:
+        resolution = self.G.img_resolution
+        new_size = int(resolution*pad)
+        padImage = Image.new(image.mode, (new_size, new_size), (0, 0, 0))
+        padding = int((resolution*pad-resolution)/2)
+        padImage.paste(image, box=(padding, padding))
+        return padImage
+
+    def base_image_path(self, seed: int, psi: float) -> str:
+        return f"base-{seed}-{psi}.{global_state.image_format}"
+
+    def generate_base_image(self, seed: int, psi: float) -> Image.Image:
+        params = {'seed': seed, 'psi': psi}
+        w = self.get_w_from_seed(seed, psi)
+        img = Image.fromarray(self.w_to_img(w)[0])
+        self.save_image_to_file(img, self.base_image_path(**params), params)
+        return img
+
+    def generate_image(self, seed: int, psi: float, pad: float=1.0) -> np.ndarray:
+        params = {'seed': seed, 'psi': psi}
+        padded_path = f"base-{seed}-{psi}-pad{pad}.{global_state.image_format}"
+        output = self.find_image_if_exists(padded_path)
+        if output is None:
+            base = self.find_image_if_exists(self.base_image_path(**params)) or self.generate_base_image(seed, psi)
+            output = self.pad_image(base, pad)
+            self.save_image_to_file(output, padded_path, {**params, 'pad': pad})
+        return output
+
+    def save_image_to_file(self, image: Image.Image, filename: str, params: dict = None):
         path = self.output_path() / filename
         if not path.exists():
             print(f"Generated GAN image with {str(params)}")
