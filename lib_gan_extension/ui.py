@@ -87,7 +87,7 @@ def on_ui_tabs():
                     mix_seed1_Num = gr.Number(label='Seed 1', value=lambda: -1, min_width=150, precision=0)
 
                     mix_seed1_luckyButton = ToolButton(ui.lucky_symbol, tooltip="Roll generate a new seed")
-                    mix_seed1_luckyButton.click(fn=lambda: mix_seed1_Num.update(value=Model.newSeed()), show_progress=False, inputs=[], outputs=[mix_seed1_Num])
+                    mix_seed1_luckyButton.click(fn=lambda: mix_seed1_Num.update(value=model.newSeed()), show_progress=False, inputs=[], outputs=[mix_seed1_Num])
 
                     mix_seed1_randButton = ToolButton(ui.random_symbol, tooltip="Set seed to -1, which will cause a new random number to be used every time")
                     mix_seed1_randButton.click(fn=lambda: mix_seed1_Num.update(value=-1), show_progress=False, inputs=[], outputs=[mix_seed1_Num])
@@ -97,7 +97,7 @@ def on_ui_tabs():
                     mix_seed2_Num = gr.Number(label='Seed 2', value=lambda: -1, min_width=150, precision=0)
 
                     mix_seed2_luckyButton = ToolButton(ui.lucky_symbol, tooltip="Roll generate a new seed")
-                    mix_seed2_luckyButton.click(fn=lambda: mix_seed2_Num.update(value=Model.newSeed()), show_progress=False, inputs=[], outputs=[mix_seed2_Num])
+                    mix_seed2_luckyButton.click(fn=lambda: mix_seed2_Num.update(value=model.newSeed()), show_progress=False, inputs=[], outputs=[mix_seed2_Num])
 
                     mix_seed2_randButton = ToolButton(ui.random_symbol, tooltip="Set seed to -1, which will cause a new random number to be used every time")
                     mix_seed2_randButton.click(fn=lambda: mix_seed2_Num.update(value=-1), show_progress=False, inputs=[], outputs=[mix_seed2_Num])
