@@ -89,6 +89,9 @@ class GanGenerator:
             img3 = self.GAN.w_to_image(w_mix)
             self.save_image_to_file(img3, filename, params)
 
+        if pad == 1.0:
+            return img1, img2, img3
+            
         img3p = self.pad_image(img3,pad)
         filename = f"{basename}-pad{pad}.{global_state.image_format}"
         self.save_image_to_file(img3p, filename, params)
