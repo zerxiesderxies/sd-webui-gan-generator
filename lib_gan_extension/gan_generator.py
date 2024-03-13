@@ -65,7 +65,7 @@ class GanGenerator:
 
     def generate_image(self, seed: int, psi: float, pad: float=1.0) -> Image.Image:
         params = {'seed': seed, 'psi': psi}
-        output = self.find_or_generate_base_image(**params)
+        output, _ = self.find_or_generate_base_image(**params)
         if pad != 1.0:
             output = self.pad_image(output, pad)
             padded_path = f"base-{seed}-{psi}-pad{pad}.{global_state.image_format}"
@@ -74,45 +74,23 @@ class GanGenerator:
         return output
 
     def generate_image_mix(self, seed1: int, seed2: int, psi: float, interpType: str, mix: float, pad: float) -> np.ndarray:
-        img1, w1 = self.generate_base_image(seed1, psi)
-        img2, w2 = self.generate_base_image(seed2, psi)
-
-        match interpType:
-            case "coarse":
-                mask = 0xFF00
-            case "mid":
-                mask = 0x0FF0
-            case "fine":
-                mask = 0x00FF
-            case "total":
-                mask = 0xFFFF
-            case _:
-                mask = str_utils.str2num(interpType)
-
-        w_base = w1.clone() # transfer onto L image as default
+        img1, w1 = self.find_or_generate_base_image(seed1, psi)
+        img2, w2 = self.find_or_generate_base_image(seed2, psi)
 
         slider_max = 2.0 # FIXME: this is a hack to fix the slider bug where range is stuck at 0-2
-        i = mix / slider_max # rescale between 0 and 1
-        if mask != 0xFFFF:
-            i = i * 2.0 - 1.0 # rescale between -1 and 1
-            if i > 0: # transfer L onto R
-                w_base = w2.clone()
-            else: # transfer R onto L
-                i = abs(i)
-                w1,w2 = w2,w1 # swap L and R
-            i *= 1.5 # increase range
+        w_mix = self.mix_weights(w1, w2, mix/slider_max, interpType)
+        img3 = self.GAN.w_to_image(w_mix)
 
-        mask = self.num2mask(mask)
-        w_base[:,mask,:] = self.xfade(w1[:,mask,:], w2[:,mask,:], i)
+        param_str = f"mix-{seed1}-{seed2}-{mix}-{interpType}"
+        filename = f"#{param_str}.{global_state.image_format}"
+        self.save_image_to_file(img3, filename, params={'seed1': seed1, 'seed2': seed2, 'mix': mix, 'interp': interpType})
 
-        img3 = self.GAN.w_to_image(w_base)
-        img3 = self.pad_image(img3,pad)
-
-        filename = f"mix-{seed1}-{seed2}-{mix}-{interpType}-{pad}.{global_state.image_format}"
-        self.save_image_to_file(img3, filename, params={'seed1': seed1, 'seed2': seed2, 'mix': mix, 'interp': interpType, 'pad': pad})
+        img3p = self.pad_image(img3,pad)
+        filename = f"#{param_str}-pad{pad}.{global_state.image_format}"
+        self.save_image_to_file(img3p, filename, params={'seed1': seed1, 'seed2': seed2, 'mix': mix, 'interp': interpType, 'pad': pad})
         
-        return img1, img2, img3
-
+        return img1, img2, img3p
+        
     def pad_image(self, image: Image.Image, factor: float=1.0) -> Image.Image:
         resolution = self.GAN.img_resolution
         new_size = int(resolution*factor)
@@ -133,12 +111,12 @@ class GanGenerator:
 
         output = self.find_image_if_exists(self.base_image_path(**params))
         if output is None:
-            output, _ = self.generate_base_image(**params)
+            output, w = self.generate_base_image(**params)
         else:
             msg += " (cached on disk)"
         logger(msg)
 
-        return output
+        return output, w
 
     def find_image_if_exists(self, filename: str) -> Union[None, Image.Image]:
         path = self.output_path() / filename
@@ -152,7 +130,6 @@ class GanGenerator:
         img = self.GAN.w_to_image(w)
         self.save_image_to_file(img, self.base_image_path(**params), params)
         return img, w
-
 
     def save_image_to_file(self, image: Image.Image, filename: str, params: dict = None):
         path = self.output_path() / filename
@@ -174,6 +151,37 @@ class GanGenerator:
     @classmethod
     def xfade(cls, a,b,x):
         return a*(1.0-x) + b*x # basic linear interpolation
+
+    @classmethod
+    def mix_weights(cls, w1: torch.Tensor, w2: torch.Tensor, amt: float, mask: Union[str,int]) -> torch.Tensor:
+        if isinstance(mask, str):
+            match mask:
+                case "coarse":
+                    mask = 0xFF00
+                case "mid":
+                    mask = 0x0FF0
+                case "fine":
+                    mask = 0x00FF
+                case "total":
+                    mask = 0xFFFF
+                case _:
+                    mask = str_utils.str2num(mask)
+
+        w_mix = w1.clone() # transfer onto L image as default
+
+        if mask != 0xFFFF:
+            amt = amt * 2.0 - 1.0 # rescale between -1 and 1
+            if amt > 0: # transfer L onto R
+                w_mix = w2.clone()
+            else: # transfer R onto L
+                i = abs(amt)
+                w1,w2 = w2,w1 # swap L and R
+            amt *= 1.5 # increase range
+
+        mask = cls.num2mask(mask)
+        w_mix[:,mask,:] = cls.xfade(w1[:,mask,:], w2[:,mask,:], amt)
+
+        return w_mix
 
     # experimental function to control weighting vector
     @classmethod
@@ -199,3 +207,4 @@ class GanGenerator:
         if sourceRangeMax == sourceRangeMin:
             raise ValueError("mapping from a range of zero will produce NaN!")
         return targetRangeMin + ((targetRangeMax - targetRangeMin) * (sourceValue - sourceRangeMin)) / (sourceRangeMax - sourceRangeMin)
+
