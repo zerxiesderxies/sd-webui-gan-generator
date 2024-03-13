@@ -137,7 +137,7 @@ def on_ui_tabs():
         mix_seed1_recycleButton.click(fn=copy_seed,show_progress=False,inputs=[mix_seed1_Txt],outputs=[mix_seed1_Num])
         mix_seed2_recycleButton.click(fn=copy_seed,show_progress=False,inputs=[mix_seed2_Txt],outputs=[mix_seed2_Num])
 
-        mix_runButton.click(fn=model.set_model_and_generate_styles,
+        mix_runButton.click(fn=model.set_model_and_generate_mix,
                         inputs=[deviceDrop, modelDrop, mix_seed1_Num, mix_seed2_Num, mix_psiSlider, mix_interp_styleDrop, mix_mixSlider, padFactorSlider],
                         outputs=[mix_seed1_Img, mix_seed2_Img, mix_styleImg, mix_seed1_Txt, mix_seed2_Txt])
 

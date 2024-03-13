@@ -126,12 +126,12 @@ class Model:
     def base_image_path(self, seed: int, psi: float) -> str:
         return f"base-{seed}-{psi}.{global_state.image_format}"
 
-    def generate_base_image(self, seed: int, psi: float) -> Image.Image:
+    def generate_base_image(self, seed: int, psi: float) -> (Image.Image, torch.Tensor):
         params = {'seed': seed, 'psi': psi}
         w = self.get_w_from_seed(**params)
         img = self.w_to_image(w)
         self.save_image_to_file(img, self.base_image_path(**params), params)
-        return img
+        return img, w
 
     def find_or_generate_base_image(self, seed: int, psi: float) -> Image.Image:
         params = {'seed': seed, 'psi': psi}
@@ -139,7 +139,7 @@ class Model:
 
         output = self.find_image_if_exists(self.base_image_path(**params))
         if output is None:
-            output = self.generate_base_image(**params)
+            output, _ = self.generate_base_image(**params)
         else:
             log += " (cached on disk)"
         print(log)
@@ -177,20 +177,18 @@ class Model:
 
         return self.generate_image(seed, psi, pad), seedTxt
         
-    def set_model_and_generate_styles(self, device: str, model_name: str, seed1: int, seed2: int,
+    def set_model_and_generate_mix(self, device: str, model_name: str, seed1: int, seed2: int,
                                      psi: float, interpType: str, mix: float, pad: float) -> np.ndarray:
         self.set_device(device)
         self.set_model(model_name)
 
         if seed1 == -1:
             seed1 = self.newSeed()
-        w1 = self.get_w_from_seed(seed1, psi)
-        img1 = self.w_to_image(w1)
+        img1, w1 = self.generate_base_image(seed1, psi)
 
         if seed2 == -1:
             seed2 = self.newSeed()
-        w2 = self.get_w_from_seed(seed2, psi)
-        img2 = self.w_to_image(w2)
+        img2, w2 = self.generate_base_image(seed2, psi)
 
         match interpType:
             case "coarse":
