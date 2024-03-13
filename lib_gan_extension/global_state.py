@@ -2,7 +2,7 @@
 image_format: "jpg"
 
 def init():
-  global image_format    
+  global image_format
 
-def log(msg: str):
-    print(f"[GanGenerator] {msg}")
+def logger(msg: str):
+    print(f"[GAN Generator] {msg}")

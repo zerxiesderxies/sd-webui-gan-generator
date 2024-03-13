@@ -1,7 +1,11 @@
 import os
-from modules import shared
 import platform
 import subprocess as sp
+from pathlib import Path
+
+from modules import shared
+
+model_path = Path(__file__).resolve().parents[1] / "models"
 
 def mkdir_p(path):
     try:

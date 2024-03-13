@@ -1,5 +1,5 @@
-import re
 from typing import Union
+import re
 import numpy as np
 
 def str2num(string) -> Union[int, None]:

@@ -1,22 +1,20 @@
+from __future__ import annotations
+from typing import Union
 import os
-from pathlib import Path
 import glob
 
-from typing import Union
 import gradio as gr
 from modules import script_callbacks, shared, ui, ui_components
 from modules.ui_components import ToolButton
+
 from lib_gan_extension import global_state, file_utils, str_utils
-from lib_gan_extension.model import Model
+from lib_gan_extension.gan_generator import GanGenerator
 
 ui.swap_symbol = "\U00002194"  # ↔️
 ui.lucky_symbol = "\U0001F340"  # 🍀
 ui.folder_symbol = "\U0001F4C1"  # 📁
 
-
-model = Model()
-
-model_path = Path(__file__).resolve().parents[1] / "models"
+model = GanGenerator()
 
 DESCRIPTION = '''# StyleGAN Image Generator
 
@@ -124,16 +122,10 @@ def on_ui_tabs():
                     with gr.Column():
                         mix_seed2_Img = gr.Image(label='Seed 2 Image')
                         mix_seed2_Txt = gr.Markdown(label='Seed 2', value="")
-                        mix_seed2_Img.upload(
-                            fn=get_seed_from_image,
-                            inputs=[mix_seed2_Img],
-                            outputs=[mix_seed2_Num],
-                            show_progress=False
-                        )
 
         seed_recycleButton.click(fn=copy_seed,show_progress=False,inputs=[seedTxt],outputs=[seedNum])
 
-        simple_runButton.click(fn=model.set_model_and_generate_image,
+        simple_runButton.click(fn=model.generate_image_from_ui,
                         inputs=[deviceDrop, modelDrop, seedNum, psiSlider, padFactorSlider],
                         outputs=[resultImg, seedTxt])
 
@@ -143,8 +135,8 @@ def on_ui_tabs():
         mix_seed1_recycleButton.click(fn=copy_seed,show_progress=False,inputs=[mix_seed1_Txt],outputs=[mix_seed1_Num])
         mix_seed2_recycleButton.click(fn=copy_seed,show_progress=False,inputs=[mix_seed2_Txt],outputs=[mix_seed2_Num])
 
-        mix_runButton.click(fn=model.set_model_and_generate_mix,
-                        inputs=[deviceDrop, modelDrop, mix_seed1_Num, mix_seed2_Num, mix_psiSlider, mix_interp_styleDrop, mix_mixSlider, padFactorSlider],
+        mix_runButton.click(fn=model.generate_mix_from_ui,
+                        inputs=[deviceDrop, modelDrop, mix_seed1_Num, mix_seed2_Num, mix_psiSlider, mix_maskDrop, mix_mixSlider, padFactorSlider],
                         outputs=[mix_seed1_Img, mix_seed2_Img, mix_styleImg, mix_seed1_Txt, mix_seed2_Txt])
 
         return [(ui_component, "GAN Generator", "gan_generator_tab")]
@@ -164,14 +156,14 @@ def copy_seed(seedTxt) -> Union[int, None]:
     return str_utils.str2num(seedTxt)
 
 def update_model_list() -> tuple[str]:
-    files = glob.glob(str(model_path / "*.pkl"))
+    files = glob.glob(str(file_utils.model_path / "*.pkl"))
     return [os.path.basename(file) for file in sorted(files, key=lambda file: (os.stat(file).st_mtime, file), reverse=True)]
 
 def default_model() -> Union[str, None]:
     return update_model_list()[0] if update_model_list() else None
 
 def touch_model_file(modelDrop) -> None:
-    filename = str(model_path / modelDrop)
+    filename = str(file_utils.model_path / modelDrop)
     with open(filename, 'a'):
         os.utime(filename, None)  # Update the modification timestamp
 
