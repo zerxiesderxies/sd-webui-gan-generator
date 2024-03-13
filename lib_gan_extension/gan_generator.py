@@ -40,7 +40,7 @@ class GanGenerator:
         if seed2 == -1:
             seed2 = self.newSeed()
 
-        img1, img2, img3 =  self.generate_image_mix(seed1, seed2, psi, interpType, mix, pad)
+        img1, img2, img3 = self.generate_image_mix(seed1, seed2, psi, interpType, mix, pad)
         seedTxt1 = f"Seed 1: {str(seed1)} ({str_utils.num2hex(seed1)})"
         seedTxt2 = f"Seed 2: {str(seed2)} ({str_utils.num2hex(seed2)})"
  
@@ -74,20 +74,24 @@ class GanGenerator:
         return output
 
     def generate_image_mix(self, seed1: int, seed2: int, psi: float, interpType: str, mix: float, pad: float) -> np.ndarray:
+        slider_max = 2.0 # FIXME: this is a hack due to slider bug (range is stuck at 0-2)
+        mix = mix/slider_max
+        params = {'seed1': seed1, 'seed2': seed2, 'mix': mix, 'interp': interpType}
+
         img1, w1 = self.find_or_generate_base_image_and_weights(seed1, psi)
         img2, w2 = self.find_or_generate_base_image_and_weights(seed2, psi)
 
-        slider_max = 2.0 # FIXME: this is a hack to fix the slider bug where range is stuck at 0-2
-        w_mix = self.mix_weights(w1, w2, mix/slider_max, interpType)
-        img3 = self.GAN.w_to_image(w_mix)
-
-        param_str = f"mix-{seed1}-{seed2}-{mix}-{interpType}"
-        filename = f"#{param_str}.{global_state.image_format}"
-        self.save_image_to_file(img3, filename, params={'seed1': seed1, 'seed2': seed2, 'mix': mix, 'interp': interpType})
+        basename = f"mix-{seed1}-{seed2}-mix{mix}-{interpType}"
+        filename = f"{basename}.{global_state.image_format}"
+        img3 = self.find_output_image(filename)
+        if img3 is None:
+            w_mix = self.mix_weights(w1, w2, mix, interpType)
+            img3 = self.GAN.w_to_image(w_mix)
+            self.save_image_to_file(img3, filename, params)
 
         img3p = self.pad_image(img3,pad)
-        filename = f"#{param_str}-pad{pad}.{global_state.image_format}"
-        self.save_image_to_file(img3p, filename, params={'seed1': seed1, 'seed2': seed2, 'mix': mix, 'interp': interpType, 'pad': pad})
+        filename = f"{basename}-pad{pad}.{global_state.image_format}"
+        self.save_image_to_file(img3p, filename, params)
         
         return img1, img2, img3p
         
@@ -109,7 +113,7 @@ class GanGenerator:
         params = {'seed': seed, 'psi': psi}
         msg = f"Rendered with {str(params)}"
 
-        output = self.find_image_if_exists(self.base_image_path(**params))
+        output = self.find_output_image(self.base_image_path(**params))
         if output is None:
             output, _ = self.generate_base_image(**params)
         else:
@@ -123,7 +127,7 @@ class GanGenerator:
         params = {'seed': seed, 'psi': psi}
         msg = f"Rendered with {str(params)}"
 
-        output = self.find_image_if_exists(self.base_image_path(**params))
+        output = self.find_output_image(self.base_image_path(**params))
         if output is None:
             output, w = self.generate_base_image(**params)
         else:
@@ -132,9 +136,9 @@ class GanGenerator:
             w = p.get('tensor')
             if w is not None:
                 w = str_utils.str2tensor(w).to(self.device)
-                # logger(f"Tensor found: {w.shape}")
+                logger(f"Tensor found in metadata: {w.shape}")
             else:
-                # logger("Warning: no tensor found in metadata")
+                logger("Tensor not found... regenerating")
                 _ , w = self.generate_base_image(**params)
             msg += " (cached on disk)"
 
@@ -142,7 +146,7 @@ class GanGenerator:
 
         return output, w
 
-    def find_image_if_exists(self, filename: str) -> Union[None, Image.Image]:
+    def find_output_image(self, filename: str) -> Union[None, Image.Image]:
         path = self.output_path() / filename
         if path.exists():
             return Image.open(path)
