@@ -39,7 +39,10 @@ def on_ui_tabs():
             model_refreshButton.click(fn=lambda: gr.Dropdown.update(choices=update_model_list()),outputs=modelDrop)
 
             deviceDrop = gr.Dropdown(choices = ['cpu','cuda:0','mps'], value=default_device, label='Generation Device', info='Generate using CPU or GPU', elem_id="device")
-
+            padSlider = gr.Slider(1,2,
+                            step=0.05,
+                            value=1.5,
+                            label='Image Resize Factor', info="Output image scale factor. If > 1, will pad with black border. Useful for zoomed in images")
             with gr.Group():
                 with gr.Column():
                     gr.Markdown(label='Output Folder', value="Output folder", elem_id="output-folder")
@@ -125,7 +128,7 @@ def on_ui_tabs():
         seed_recycleButton.click(fn=copy_seed,show_progress=False,inputs=[seedTxt],outputs=[seedNum])
 
         simple_runButton.click(fn=model.set_model_and_generate_image,
-                        inputs=[deviceDrop, modelDrop, seedNum, psiSlider],
+                        inputs=[deviceDrop, modelDrop, seedNum, psiSlider, padSlider],
                         outputs=[resultImg, seedTxt])
 
         seed1_to_mixButton.click(fn=copy_seed, inputs=[seedTxt],outputs=[mix_seed1_Num])
@@ -135,7 +138,7 @@ def on_ui_tabs():
         mix_seed2_recycleButton.click(fn=copy_seed,show_progress=False,inputs=[mix_seed2_Txt],outputs=[mix_seed2_Num])
 
         mix_runButton.click(fn=model.set_model_and_generate_styles,
-                        inputs=[deviceDrop, modelDrop, mix_seed1_Num, mix_seed2_Num, mix_psiSlider, mix_interp_styleDrop, mix_mixSlider],
+                        inputs=[deviceDrop, modelDrop, mix_seed1_Num, mix_seed2_Num, mix_psiSlider, mix_interp_styleDrop, mix_mixSlider, padSlider],
                         outputs=[mix_seed1_Img, mix_seed2_Img, mix_styleImg, mix_seed1_Txt, mix_seed2_Txt])
 
         return [(ui_component, "GAN Generator", "gan_generator_tab")]
