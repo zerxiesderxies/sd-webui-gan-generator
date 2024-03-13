@@ -1,5 +1,9 @@
 from typing import Union
 import re
+import io
+import base64
+import zlib
+import torch
 import numpy as np
 
 def str2num(string) -> Union[int, None]:
@@ -19,3 +23,22 @@ def num2hex(num: int ) -> str:
 
 def num2base(num: int, base: int=36) -> str:
     return np.base_repr(number, base)
+
+def tensor2str(tensor: Union[torch.Tensor, np.ndarray]) -> str:
+    if isinstance(tensor, torch.Tensor):
+        tensor = tensor.cpu().numpy()
+    with io.BytesIO() as f:
+        np.save(f, tensor)
+        tensor_bytes = f.getvalue()
+    compressed_bytes = zlib.compress(tensor_bytes)
+    encoded_bytes = base64.b64encode(compressed_bytes)
+
+    return encoded_bytes.decode('utf-8')
+
+def str2tensor(encoded: str) -> torch.Tensor:
+    decoded_bytes = base64.b64decode(encoded)
+    decompressed_bytes = zlib.decompress(decoded_bytes)
+    with io.BytesIO(decompressed_bytes) as f:
+        tensor = np.load(f)
+
+    return torch.tensor(tensor)

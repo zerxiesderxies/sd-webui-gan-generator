@@ -8,7 +8,7 @@ import random
 from modules.images import save_image_with_geninfo
 from modules.paths_internal import default_output_dir
 
-from lib_gan_extension import GanModel, global_state, file_utils, str_utils
+from lib_gan_extension import GanModel, global_state, file_utils, str_utils, metadata
 from .global_state import logger
 
 class GanGenerator:
@@ -69,13 +69,13 @@ class GanGenerator:
         if pad != 1.0:
             output = self.pad_image(output, pad)
             padded_path = f"base-{seed}-{psi}-pad{pad}.{global_state.image_format}"
-            self.save_image_to_file(output, padded_path, {**params, 'pad': pad})
+            self.save_image_to_file(output, padded_path, params)
             # logger(f"  Padded image by {pad}x")
         return output
 
     def generate_image_mix(self, seed1: int, seed2: int, psi: float, interpType: str, mix: float, pad: float) -> np.ndarray:
-        img1, w1 = self.find_or_generate_base_image(seed1, psi)
-        img2, w2 = self.find_or_generate_base_image(seed2, psi)
+        img1, w1 = self.find_or_generate_base_image_and_weights(seed1, psi)
+        img2, w2 = self.find_or_generate_base_image_and_weights(seed2, psi)
 
         slider_max = 2.0 # FIXME: this is a hack to fix the slider bug where range is stuck at 0-2
         w_mix = self.mix_weights(w1, w2, mix/slider_max, interpType)
@@ -114,9 +114,33 @@ class GanGenerator:
             output, _ = self.generate_base_image(**params)
         else:
             msg += " (cached on disk)"
+
         logger(msg)
 
         return output
+
+    def find_or_generate_base_image_and_weights(self, seed: int, psi: float) -> (Image.Image, torch.Tensor):
+        params = {'seed': seed, 'psi': psi}
+        msg = f"Rendered with {str(params)}"
+
+        output = self.find_image_if_exists(self.base_image_path(**params))
+        if output is None:
+            output, w = self.generate_base_image(**params)
+        else:
+            # load metadata from image file
+            p = metadata.parse_params_from_image(output)
+            w = p.get('tensor')
+            if w is not None:
+                w = str_utils.str2tensor(w).to(self.device)
+                # logger(f"Tensor found: {w.shape}")
+            else:
+                # logger("Warning: no tensor found in metadata")
+                _ , w = self.generate_base_image(**params)
+            msg += " (cached on disk)"
+
+        logger(msg)
+
+        return output, w
 
     def find_image_if_exists(self, filename: str) -> Union[None, Image.Image]:
         path = self.output_path() / filename
@@ -124,11 +148,15 @@ class GanGenerator:
             return Image.open(path)
         return None
 
+    # Make note that there are two return values here!
     def generate_base_image(self, seed: int, psi: float) -> (Image.Image, torch.Tensor):
         params = {'seed': seed, 'psi': psi}
         w = self.GAN.get_w_from_seed(**params)
         img = self.GAN.w_to_image(w)
-        self.save_image_to_file(img, self.base_image_path(**params), params)
+        path = self.base_image_path(**params)
+        params['tensor'] = str_utils.tensor2str(w)
+        self.save_image_to_file(img, path, params)
+
         return img, w
 
     def save_image_to_file(self, image: Image.Image, filename: str, params: dict = None):
@@ -205,4 +233,3 @@ class GanGenerator:
         if sourceRangeMax == sourceRangeMin:
             raise ValueError("mapping from a range of zero will produce NaN!")
         return targetRangeMin + ((targetRangeMax - targetRangeMin) * (sourceValue - sourceRangeMin)) / (sourceRangeMax - sourceRangeMin)
-
