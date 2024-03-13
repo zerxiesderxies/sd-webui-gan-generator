@@ -56,7 +56,7 @@ class GanGenerator:
             file_utils.mkdir_p(self.output_path())
             path = file_utils.model_path / model_name
             self.GAN = GanModel(str(path), self.device)
-            logger(f"Loaded GAN model {model_name}")
+            logger(f"Loaded model {model_name}")
         else:
             self.GAN.set_device(self.device)
 
@@ -129,7 +129,7 @@ class GanGenerator:
 
     def find_or_generate_base_image(self, seed: int, psi: float) -> Image.Image:
         params = {'seed': seed, 'psi': psi}
-        msg = f"Generated GAN image with {str(params)}"
+        msg = f"Rendered with {str(params)}"
 
         output = self.find_image_if_exists(self.base_image_path(**params))
         if output is None:

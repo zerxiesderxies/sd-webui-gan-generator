@@ -7,8 +7,7 @@ import gradio as gr
 from modules import script_callbacks, shared, ui, ui_components
 from modules.ui_components import ToolButton
 
-from lib_gan_extension import global_state, file_utils, str_utils
-from lib_gan_extension.gan_generator import GanGenerator
+from lib_gan_extension import global_state, file_utils, str_utils, GanGenerator, logger
 
 ui.swap_symbol = "\U00002194"  # ↔️
 ui.lucky_symbol = "\U0001F340"  # 🍀
@@ -179,5 +178,6 @@ def default_device() -> str:
 
 def update_image_format():
     global_state.image_format = shared.opts.data.get('gan_generator_image_format', 'jpg')
-    print(f"GAN Output Image Format: {global_state.image_format}")
+
+    logger(f"Output format: {global_state.image_format}")
 
