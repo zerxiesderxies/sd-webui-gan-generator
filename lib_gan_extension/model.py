@@ -109,19 +109,26 @@ class Model:
 
     def output_path(self):
         return self.outputRoot / ".".join(self.model_name.split(".")[:-1])
-
-    def generate_image(self, seed: int, psi: float, save: bool=True) -> np.ndarray:
-        filename = f"base-{seed}-{psi}.{global_state.image_format}"
+        
+    def pad_image(self, image, pad):
+        resolution = self.G.img_resolution
+        padImage = Image.new(image.mode, (int(resolution*pad), int(resolution*pad)), (0, 0, 0))
+        padImage.paste(image, box=(int((resolution*pad-resolution)/2),int((resolution*pad-resolution)/2)))    
+        return padImage
+        
+    def generate_image(self, seed: int, psi: float, pad: float, save: bool=True) -> np.ndarray:
+        filename = f"base-{seed}-{psi}-{pad}.{global_state.image_format}"
         path = self.output_path() / filename
         if path.exists():
             return Image.open(path)
         else:
             w = self.get_w_from_seed(seed, psi)
-            output = self.w_to_img(w)[0]
-            self.save_output_to_file(output, filename, params={'seed': seed, 'psi': psi})
-            return output
+            output = Image.fromarray(self.w_to_img(w)[0])
+            image = self.pad_image(output, pad)
+            self.save_image_to_file(image, filename, params={'seed': seed, 'psi': psi, 'pad': pad})
+            return image
 
-    def save_output_to_file(self, output, filename, params: dict = None):
+    def save_image_to_file(self, image, filename, params: dict = None):
         path = self.output_path() / filename
         if not path.exists():
             print(f"Generated GAN image with {str(params)}")
@@ -132,30 +139,29 @@ class Model:
                     'extension': 'gan-generator',
                 }
             }
-            image = Image.fromarray(output)
             save_image_with_geninfo(image, str(info), str(path))
 
     def set_model_and_generate_image(self, device: str, model_name: str, seed: int,
-                                     psi: float) -> np.ndarray:        
+                                     psi: float, pad: float) -> np.ndarray:        
         self.set_device(device)
         self.set_model(model_name)
         if seed == -1:
             seed = self.newSeed()
         seedTxt = 'Seed: ' + str(seed)
-        return self.generate_image(seed, psi), seedTxt
+        return self.generate_image(seed, psi, pad), seedTxt
         
     def set_model_and_generate_styles(self, device: str, model_name: str, seed1: int, seed2: int,
-                                     psi: float, interpType: str, mix: float) -> np.ndarray:
+                                     psi: float, interpType: str, mix: float, pad: float) -> np.ndarray:
         self.set_device(device)
         self.set_model(model_name)
 
         if seed1 == -1:
             seed1 = self.newSeed()
-        img1 = self.generate_image(seed1, psi)
+        img1 = self.generate_image(seed1, psi, pad)
 
         if seed2 == -1:
             seed2 = self.newSeed()
-        img2 = self.generate_image(seed2, psi)
+        img2 = self.generate_image(seed2, psi, pad)
 
         w_avg = self.G.mapping.w_avg
         w_list = []
@@ -186,9 +192,10 @@ class Model:
 
         # print(f"mixing w/ style: {interpType}, i: {i}")
      
-        img3 = self.w_to_img(w_base)[0]
-        filename = f"mix-{seed1}-{seed2}-{mix}-{interpType}.{global_state.image_format}"
-        self.save_output_to_file(img3, filename, params={'seed1': seed1, 'seed2': seed2, 'mix': mix, 'interp': interpType})
+        img3 = Image.fromarray(self.w_to_img(w_base)[0])
+        filename = f"mix-{seed1}-{seed2}-{mix}-{interpType}-{pad}.{global_state.image_format}"
+        img3 = self.pad_image(img3,pad)
+        self.save_image_to_file(img3, filename, params={'seed1': seed1, 'seed2': seed2, 'mix': mix, 'interp': interpType, 'pad': pad})
         
         seedTxt1 = 'Seed 1: ' + str(seed1)
         seedTxt2 = 'Seed 2: ' + str(seed2)
