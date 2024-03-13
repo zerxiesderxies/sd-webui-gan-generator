@@ -91,7 +91,7 @@ class GanGenerator:
 
         if pad == 1.0:
             return img1, img2, img3
-            
+
         img3p = self.pad_image(img3,pad)
         filename = f"{basename}-pad{pad}.{global_state.image_format}"
         self.save_image_to_file(img3p, filename, params)
@@ -139,9 +139,9 @@ class GanGenerator:
             w = p.get('tensor')
             if w is not None:
                 w = str_utils.str2tensor(w).to(self.device)
-                # logger(f"Tensor found in metadata: {w.shape}")
+                logger(f"Tensor found in metadata: {w.shape}")
             else:
-                # logger("Tensor not found... regenerating")
+                logger("Tensor not found... regenerating")
                 _ , w = self.generate_base_image(**params)
             msg += " (cached on disk)"
 
