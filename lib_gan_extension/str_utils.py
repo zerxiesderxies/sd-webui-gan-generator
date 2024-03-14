@@ -27,6 +27,7 @@ def num2base(num: int, base: int=36) -> str:
 
 def tensor2str(tensor: Union[torch.Tensor, np.ndarray]) -> str:
     if isinstance(tensor, torch.Tensor):
+        logger("converting to numpy")
         tensor = tensor.cpu().numpy()
     with io.BytesIO() as f:
         np.save(f, tensor)
@@ -37,7 +38,11 @@ def tensor2str(tensor: Union[torch.Tensor, np.ndarray]) -> str:
     return encoded_bytes.decode('utf-8')
 
 def str2tensor(encoded: str) -> torch.Tensor:
-    decoded_bytes = base64.b64decode(encoded)
+    # if not str.startswith("eJzt1"):
+    #     logger("Vector is malformed: ", encoded[:5], "... ignoring")
+    #     return torch.Tensor(0)
+
+    decoded_bytes = base64.b64decode(encoded.strip())
     decompressed_bytes = zlib.decompress(decoded_bytes)
     with io.BytesIO(decompressed_bytes) as f:
         tensor = np.load(f)

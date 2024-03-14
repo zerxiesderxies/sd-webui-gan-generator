@@ -123,6 +123,8 @@ def on_ui_tabs():
                                 outputs=[mix_seed1_Num],
                                 show_progress=False
                             )
+                            mix_vector1 = gr.Textbox(label='Vector 1', type="text")
+
                         with gr.Column(elem_classes="mix-item"):
                             mix_styleImg = gr.Image(label='Style Mixed Image', sources=['upload','clipboard'], interactive=True, type="filepath", elem_classes="gan-output")
                             mix_styleImg.upload(
@@ -131,6 +133,8 @@ def on_ui_tabs():
                                 outputs=[mix_seed1_Num, mix_seed2_Num, mix_mixSlider, mix_maskDrop],
                                 show_progress=False
                             )
+                            mix_vector_result = gr.Textbox(label='Vector Result', type="text")
+                        
                         with gr.Column(elem_classes="mix-item"):
                             mix_seed2_Img = gr.Image(label='Seed 2 Image', sources=['upload','clipboard'], interactive=True, type="filepath", elem_classes="gan-output")
                             mix_seed2_Txt = gr.Markdown(label='Seed 2', value="")
@@ -140,6 +144,7 @@ def on_ui_tabs():
                                 outputs=[mix_seed2_Num],
                                 show_progress=False
                             )
+                            mix_vector2 = gr.Textbox(label='Vector 2', type="text")
 
         seed_recycleButton.click(fn=copy_seed,show_progress=False,inputs=[seedTxt],outputs=[seedNum])
 
@@ -154,8 +159,8 @@ def on_ui_tabs():
         mix_seed2_recycleButton.click(fn=copy_seed,show_progress=False,inputs=[mix_seed2_Txt],outputs=[mix_seed2_Num])
 
         mix_runButton.click(fn=model.generate_mix_from_ui,
-                        inputs=[modelDrop, mix_seed1_Num, mix_seed2_Num, mix_psiSlider, mix_maskDrop, mix_mixSlider],
-                        outputs=[mix_seed1_Img, mix_seed2_Img, mix_styleImg, mix_seed1_Txt, mix_seed2_Txt])
+                        inputs=[modelDrop, mix_seed1_Num, mix_seed2_Num, mix_psiSlider, mix_maskDrop, mix_mixSlider, mix_vector1, mix_vector2],
+                        outputs=[mix_seed1_Img, mix_seed2_Img, mix_styleImg, mix_seed1_Txt, mix_seed2_Txt, mix_vector1, mix_vector2, mix_vector_result])
 
         return [(ui_component, "GAN Generator", "gan_generator_tab")]
 
@@ -251,3 +256,4 @@ def get_mix_params_from_image(img) -> tuple[int,int,float,str]:
     model_name = p.get('model',model_name)
 
     return seed1, seed2, mix, mask #, model_name
+

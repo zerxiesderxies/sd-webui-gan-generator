@@ -35,7 +35,8 @@ class GanGenerator:
         
 
     def generate_mix_from_ui(self, model_name: str, seed1: int, seed2: int,
-                                     psi: float, interpType: str, mix: float) -> np.ndarray:
+                                     psi: float, interpType: str, mix: float, w1: str, w2: str) -> (Image.Image, Image.Image, Image.Image, str, str, str, str, str):
+
         self.set_model(model_name)
 
         if seed1 == -1:
@@ -43,11 +44,18 @@ class GanGenerator:
         if seed2 == -1:
             seed2 = self.newSeed()
 
-        img1, img2, img3 = self.generate_image_mix(seed1, seed2, psi, interpType, mix, global_state.image_pad)
-        seedTxt1 = f"Seed 1: {str(seed1)} ({str_utils.num2hex(seed1)})"
-        seedTxt2 = f"Seed 2: {str(seed2)} ({str_utils.num2hex(seed2)})"
- 
-        return img1, img2, img3, seedTxt1, seedTxt2
+        w1 = str_utils.str2tensor(w1).to(self.device) if w1 != "" else None
+        w2 = str_utils.str2tensor(w2).to(self.device) if w2 != "" else None
+
+        img1, img2, img3, w3 = self.generate_image_mix(seed1, seed2, psi, interpType, mix, global_state.image_pad, w1, w2)
+        seedTxt1 = f"Seed 1: {str(seed1)} ({str_utils.num2hex(seed1)})" if w1 is None else "Seed 1: None (vector provided)"
+        seedTxt2 = f"Seed 2: {str(seed2)} ({str_utils.num2hex(seed2)})" if w2 is None else "Seed 2: None (vector provided)"
+
+        w1 = str_utils.tensor2str(w1)
+        w2 = str_utils.tensor2str(w2)
+        w3 = str_utils.tensor2str(w3)
+
+        return img1, img2, img3, seedTxt1, seedTxt2, w1, w2, w3
 
     def set_model(self, model_name: str) -> None:
         self.device = global_state.device
@@ -72,11 +80,16 @@ class GanGenerator:
             # logger(f"  Padded image by {pad}x")
         return output
 
-    def generate_image_mix(self, seed1: int, seed2: int, psi: float, interpType: str, mix: float, pad: float) -> np.ndarray:
+    def generate_image_mix(self, seed1: int, seed2: int, psi: float, interpType: str, mix: float, pad: float,
+                            w1: Union[torch.Tensor,None], w2: Union[torch.Tensor,None]) -> (Image.Image, Image.Image, Image.Image, Union[torch.Tensor,None]):
+        slider_max = 2.0 # FIXME: this is a hack due to slider bug (range is stuck at 0-2)
+        mix = mix/slider_max
         params = {'seed1': seed1, 'seed2': seed2, 'mix': mix, 'interp': interpType}
 
-        img1, w1 = self.find_or_generate_base_image_and_weights(seed1, psi)
-        img2, w2 = self.find_or_generate_base_image_and_weights(seed2, psi)
+        img1, w1 = self.find_or_generate_base_image(seed1, psi, w1)
+        if seed1 == seed2:
+            return img1, img1, img1, w1
+        img2, w2 = self.find_or_generate_base_image(seed2, psi, w2)
 
         basename = f"mix-{seed1}-{seed2}-mix{mix}-{interpType}"
         filename = f"{basename}.{global_state.image_format}"
@@ -87,13 +100,13 @@ class GanGenerator:
             self.save_image_to_file(img3, filename, params)
 
         if pad == 1.0:
-            return img1, img2, img3
+            return img1, img2, img3, w_mix
 
         img3p = self.pad_image(img3,pad)
         filename = f"{basename}-pad{pad}.{global_state.image_format}"
         self.save_image_to_file(img3p, filename, params)
         
-        return img1, img2, img3p
+        return img1, img2, img3p, w_mix
         
     def pad_image(self, image: Image.Image, factor: float=1.0) -> Image.Image:
         resolution = self.GAN.img_resolution
@@ -103,48 +116,40 @@ class GanGenerator:
         padImage.paste(image, box=(padding, padding))
         return padImage
 
-    def base_image_path(self, seed: int, psi: float) -> str:
-        return f"base-{seed}-{psi}.{global_state.image_format}"
+    def base_image_path(self, dictionary: dict, include_key: bool=False, base: str="base") -> str:
+        args_str = '-'.join(f"{key}_{value}" for key, value in dictionary.items())
+        if include_key:
+            args_str += '-' + '-'.join(f"{key}_{value}" for key, value in dictionary.items())
+        return f"{base}-{args_str}.{global_state.image_format}"
 
     def output_path(self):
         return self.outputRoot / ".".join(self.model_name.split(".")[:-1])
 
-    def find_or_generate_base_image(self, seed: int, psi: float) -> Image.Image:
+    def find_or_generate_base_image(self, seed: int, psi: float, w: Union[torch.Tensor, None]=None) -> (Image.Image, torch.Tensor):
         params = {'seed': seed, 'psi': psi}
         msg = f"Rendered with {str(params)}"
-
-        output = self.find_output_image(self.base_image_path(**params))
-        if output is None:
-            output, _ = self.generate_base_image(**params)
-        else:
-            msg += " (cached on disk)"
-
-        logger(msg)
-
-        return output
-
-    def find_or_generate_base_image_and_weights(self, seed: int, psi: float) -> (Image.Image, torch.Tensor):
-        params = {'seed': seed, 'psi': psi}
-        msg = f"Rendered with {str(params)}"
-
-        output = self.find_output_image(self.base_image_path(**params))
-        if output is None:
-            output, w = self.generate_base_image(**params)
-        else:
-            # load metadata from image file
-            p = metadata.parse_params_from_image(output)
-            w = p.get('tensor')
-            if w is not None:
-                w = str_utils.str2tensor(w).to(self.device)
-                logger(f"Tensor found in metadata: {w.shape}")
+        if w is None:
+            img = self.find_output_image(self.base_image_path(params))
+            if img is None:
+                img, w = self.generate_base_image(seed=seed, psi=psi)
             else:
-                logger("Tensor not found... regenerating")
-                _ , w = self.generate_base_image(**params)
-            msg += " (cached on disk)"
+                # load vector weights from image metadata
+                p = metadata.parse_params_from_image(img)
+                w = p.get('tensor')
+                if w is not None:
+                    w = str_utils.str2tensor(w).to(self.device)
+                    logger(f"Tensor found in metadata: {w.shape}")
+                else:
+                    logger("Tensor not found... regenerating")
+                    _ , w = self.generate_base_image(**params)
+                msg += " (cached on disk)"
+        else:
+            img, w = self.generate_base_image(seed=seed, psi=psi, w=w)
+            msg = f"Rendered from encoded Tensor {hash(w)}"
 
         logger(msg)
 
-        return output, w
+        return img, w
 
     def find_output_image(self, filename: str) -> Union[None, Image.Image]:
         path = self.output_path() / filename
@@ -152,11 +157,18 @@ class GanGenerator:
             return Image.open(path)
 
     # Make note that there are two return values here!
-    def generate_base_image(self, seed: int, psi: float) -> (Image.Image, torch.Tensor):
+    def generate_base_image(self, seed: int, psi: float, w: Union[torch.Tensor,None]=None) -> (Image.Image, torch.Tensor):
         params = {'seed': seed, 'psi': psi}
+        if w is not None: # don't save file
+            img = self.GAN.w_to_image(w)
+            path = self.base_image_path({"hash": hash(w) }, base="tensor", include_key=True)
+            params['tensor'] = str_utils.tensor2str(w)
+            self.save_image_to_file(img, path, params)
+            return img, w
+        
         w = self.GAN.get_w_from_seed(**params)
         img = self.GAN.w_to_image(w)
-        path = self.base_image_path(**params)
+        path = self.base_image_path(params)
         params['tensor'] = str_utils.tensor2str(w)
         self.save_image_to_file(img, path, params)
 
