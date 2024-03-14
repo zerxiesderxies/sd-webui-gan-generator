@@ -218,11 +218,10 @@ def get_seed_from_image(img) -> int:
 def get_params_from_image(img) -> tuple[int,float]:
     seed,psi,model_name = -1, 0.7, default_model()
     p = metadata.parse_params_from_image(img)
-    if p is not None:
-        seed = p.get('seed',seed)
-        seed = p.get('seed', p.get('seed1',seed))
-        psi = p.get('psi',psi)
-        model_name = p.get('model',model_name)
+    seed = p.get('seed',seed)
+    seed = p.get('seed', p.get('seed1',seed))
+    psi = p.get('psi',psi)
+    model_name = p.get('model',model_name)
          
     return seed, psi #, model_name
  
@@ -231,13 +230,12 @@ def get_mix_params_from_image(img) -> tuple[int,int,float,str]:
     psi,mask,model_name = 0.7, "total (0xFFFF)", default_model()
 
     p = metadata.parse_params_from_image(img)
-    if p is not None:
-        seed1 = p.get('seed1',seed1)
-        seed2 = p.get('seed2',seed2)
-        mix = p.get('mix',mix)
-        psi = p.get('psi',psi)
-        mask = p.get('mask',mask)
-        model_name = p.get('model',model_name)
+    seed1 = p.get('seed1',seed1)
+    seed2 = p.get('seed2',seed2)
+    mix = p.get('mix',mix)
+    psi = p.get('psi',psi)
+    mask = p.get('mask',mask)
+    model_name = p.get('model',model_name)
 
     return seed1, seed2, mix, mask #, model_name
 
