@@ -77,6 +77,18 @@ def get_plugin(module_name, sources, headers=None, source_dir=None, **build_kwar
 
     # Compile and load.
     try: # pylint: disable=too-many-nested-blocks
+    
+        # Try Loading Module First:
+        try:
+            print(f'Trying to load module if available.')
+            module = importlib.import_module(module_name)
+            print('Module Loaded Successfully...')
+            _cached_plugins[module_name] = module
+            return module
+        except Exception as e:
+            print(e)
+            print(f'Module not found. Proceeding with build...')
+        
         # Make sure we can find the necessary compiler binaries.
         if os.name == 'nt' and os.system("where cl.exe >nul 2>nul") != 0:
             compiler_bindir = _find_compiler_bindir()
