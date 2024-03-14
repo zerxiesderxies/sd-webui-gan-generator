@@ -203,7 +203,7 @@ def default_device() -> str:
     return default_device
 
 def update_image_format():
-    global_state.image_format = shared.opts.data.get('gan_generator_image_format', 'jpg')
+    global_state.image_format = shared.opts.data.get('gan_generator_image_format', 'png')
     logger(f"Output format: {global_state.image_format}")
 
 def update_image_padding():
