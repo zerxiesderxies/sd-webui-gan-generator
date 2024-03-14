@@ -21,14 +21,16 @@ class GanGenerator:
 
     ## methods called by UI
     def generate_image_from_ui(self, device: str, model_name: str, seed: int,
-                                     psi: float) -> np.ndarray:        
+                                     psi: float) -> (Image.Image, str):
         self.prepare_model(model_name, device)
 
         if seed == -1:
             seed = self.newSeed()
         seedTxt = 'Seed: ' + str(seed)
 
-        return self.generate_image(seed, psi, global_state.image_pad), seedTxt
+        img = self.generate_image(seed, psi, global_state.image_pad)
+
+        return img, seedTxt
         
 
     def generate_mix_from_ui(self, device: str, model_name: str, seed1: int, seed2: int,

@@ -5,6 +5,7 @@ import base64
 import zlib
 import torch
 import numpy as np
+from .global_state import logger
 
 def str2num(string) -> Union[int, None]:
     # find a number at the end of a string, optionally enclosed in parentheses
