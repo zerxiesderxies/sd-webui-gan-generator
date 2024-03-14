@@ -1,7 +1,6 @@
 from __future__ import annotations
 from typing import Union
 import os
-import glob
 import ast
 from PIL import Image
 
@@ -35,8 +34,6 @@ def on_ui_tabs():
             model_refreshButton = ToolButton(value=ui.refresh_symbol, tooltip="Refresh")
             model_refreshButton.click(fn=lambda: gr.Dropdown.update(choices=update_model_list()),outputs=modelDrop)
 
-            deviceDrop = gr.Dropdown(choices = ['cpu','cuda:0','mps'], value=default_device, label='Generation Device', info='Generate using CPU or GPU', elem_id="device")
-            
             with gr.Group():
                 with gr.Column():
                     gr.Markdown(label='Output Folder', value="Output folder", elem_id="output-folder")
@@ -146,7 +143,7 @@ def on_ui_tabs():
         seed_recycleButton.click(fn=copy_seed,show_progress=False,inputs=[seedTxt],outputs=[seedNum])
 
         simple_runButton.click(fn=model.generate_image_from_ui,
-                        inputs=[deviceDrop, modelDrop, seedNum, psiSlider],
+                        inputs=[modelDrop, seedNum, psiSlider],
                         outputs=[resultImg, seedTxt])
 
         seed1_to_mixButton.click(fn=copy_seed, inputs=[seedTxt],outputs=[mix_seed1_Num])
@@ -156,7 +153,7 @@ def on_ui_tabs():
         mix_seed2_recycleButton.click(fn=copy_seed,show_progress=False,inputs=[mix_seed2_Txt],outputs=[mix_seed2_Num])
 
         mix_runButton.click(fn=model.generate_mix_from_ui,
-                        inputs=[deviceDrop, modelDrop, mix_seed1_Num, mix_seed2_Num, mix_psiSlider, mix_maskDrop, mix_mixSlider],
+                        inputs=[modelDrop, mix_seed1_Num, mix_seed2_Num, mix_psiSlider, mix_maskDrop, mix_mixSlider],
                         outputs=[mix_seed1_Img, mix_seed2_Img, mix_styleImg, mix_seed1_Txt, mix_seed2_Txt])
 
         return [(ui_component, "GAN Generator", "gan_generator_tab")]
@@ -167,8 +164,12 @@ def on_ui_settings():
     global_state.init()
     section = ('gan_generator', 'StyleGAN Image Generator')
 
+    shared.opts.add_option('gan_generator_device',
+        shared.OptionInfo(default_device(), "Generate using CPU or GPU", gr.Dropdown, {"choices": ["cpu", "cuda", "mps"]}, section=section))
+    shared.opts.onchange('gan_generator_device', update_device)
+
     shared.opts.add_option('gan_generator_image_format',
-        shared.OptionInfo("jpg", "File format for image outputs", gr.Dropdown, {"choices": ["jpg", "png"]}, section=section))
+        shared.OptionInfo("png", "File format for image outputs", gr.Dropdown, {"choices": ["jpg", "png"]}, section=section))
     shared.opts.onchange('gan_generator_image_format', update_image_format)
 
     shared.opts.add_option('gan_generator_image_pad',
@@ -181,26 +182,28 @@ def copy_seed(seedTxt) -> Union[int, None]:
     return str_utils.str2num(seedTxt)
 
 def update_model_list() -> tuple[str]:
-    files = glob.glob(str(file_utils.model_path / "*.pkl"))
+    files = file_utils.model_path.glob("*.pkl")
     return [os.path.basename(file) for file in sorted(files, key=lambda file: (os.stat(file).st_mtime, file), reverse=True)]
 
 def default_model() -> Union[str, None]:
     return update_model_list()[0] if update_model_list() else None
 
 def touch_model_file(modelDrop) -> None:
-    filename = str(file_utils.model_path / modelDrop)
-    with open(filename, 'a'):
-        os.utime(filename, None)  # Update the modification timestamp
+    file_utils.touch( file_utils.model_path / modelDrop )
 
 import torch
 def default_device() -> str:
     if torch.backends.mps.is_available():
         default_device = "mps"
-    elif torch.cuda.is_available():
-        default_device = "cuda:0"
+    # elif torch.cuda.is_available():
+    #     default_device = "cuda"
     else:
         default_device = "cpu"
     return default_device
+
+def update_device():
+    global_state.device = shared.opts.data.get('gan_generator_device', default_device())
+    logger(f"Model: {global_state.device}")
 
 def update_image_format():
     global_state.image_format = shared.opts.data.get('gan_generator_image_format', 'png')

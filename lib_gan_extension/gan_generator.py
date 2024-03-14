@@ -17,12 +17,12 @@ class GanGenerator:
         self.model_name = None
         self.GAN = None
         self.outputRoot = Path(__file__) / default_output_dir / "stylegan-images"
-        file_utils.mkdir_p(self.outputRoot)
+        self.outputRoot.mkdir(parents=True, exist_ok=True)
 
     ## methods called by UI
-    def generate_image_from_ui(self, device: str, model_name: str, seed: int,
+    def generate_image_from_ui(self, model_name: str, seed: int,
                                      psi: float) -> (Image.Image, str):
-        self.prepare_model(model_name, device)
+        self.set_model(model_name)
 
         if seed == -1:
             seed = self.newSeed()
@@ -33,9 +33,9 @@ class GanGenerator:
         return img, seedTxt
         
 
-    def generate_mix_from_ui(self, device: str, model_name: str, seed1: int, seed2: int,
+    def generate_mix_from_ui(self, model_name: str, seed1: int, seed2: int,
                                      psi: float, interpType: str, mix: float) -> np.ndarray:
-        self.prepare_model(model_name, device)
+        self.set_model(model_name)
 
         if seed1 == -1:
             seed1 = self.newSeed()
@@ -48,19 +48,14 @@ class GanGenerator:
  
         return img1, img2, img3, seedTxt1, seedTxt2
 
-
-    def prepare_model(self, model_name: str, device: str) -> None:
-        if device != self.device:
-            self.device = device
-            logger(f"Device selected: {device}")
+    def set_model(self, model_name: str) -> None:
+        self.device = global_state.device
         if model_name != self.model_name:
             self.model_name = model_name
-            file_utils.mkdir_p(self.output_path())
+            self.output_path().mkdir(parents=True, exist_ok=True)
             path = file_utils.model_path / model_name
-            self.GAN = GanModel(str(path), self.device)
+            self.GAN = GanModel(path, self.device)
             logger(f"Loaded model {model_name}")
-        else:
-            self.GAN.set_device(self.device)
 
 
     ## Image generation methods
@@ -155,7 +150,6 @@ class GanGenerator:
         path = self.output_path() / filename
         if path.exists():
             return Image.open(path)
-        return None
 
     # Make note that there are two return values here!
     def generate_base_image(self, seed: int, psi: float) -> (Image.Image, torch.Tensor):
