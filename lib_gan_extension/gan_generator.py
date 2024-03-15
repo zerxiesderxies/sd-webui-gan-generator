@@ -4,6 +4,7 @@ from pathlib import Path
 import numpy as np
 from PIL import Image
 import random
+import sys
 
 from modules.images import save_image_with_geninfo
 from modules.paths_internal import default_output_dir
@@ -50,6 +51,17 @@ class GanGenerator:
     def prepare_model(self, model_name: str, device: str) -> None:
         if device != self.device:
             self.device = device
+            if 'cuda' in device:
+                # Add cuda_extension binaries to path
+                bias_path = Path(__file__).resolve().parents[0] / "cuda_extensions_cuda121_py310" / "bias_act_plugin"
+                filt_path = Path(__file__).resolve().parents[0] / "cuda_extensions_cuda121_py310" / "filtered_lrelu_plugin"
+                upfir_path = Path(__file__).resolve().parents[0] / "cuda_extensions_cuda121_py310" / "upfirdn2d_plugin"
+                if bias_path.__str__() not in sys.path:
+                    sys.path.append(bias_path.__str__())
+                if filt_path.__str__() not in sys.path:
+                    sys.path.append(filt_path.__str__())
+                if upfir_path.__str__() not in sys.path:
+                    sys.path.append(upfir_path.__str__())
             logger(f"Device selected: {device}")
         if model_name != self.model_name:
             self.model_name = model_name
