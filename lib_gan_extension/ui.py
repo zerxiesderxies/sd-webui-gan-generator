@@ -1,8 +1,10 @@
 from __future__ import annotations
 from typing import Union
+import sys
 import os
 import ast
 from PIL import Image
+from pathlib import Path
 
 import gradio as gr
 from modules import script_callbacks, shared, ui, ui_components
@@ -203,6 +205,13 @@ def default_device() -> str:
 
 def update_device():
     global_state.device = shared.opts.data.get('gan_generator_device', default_device())
+    if 'cuda' in global_state.device:
+        # Ensure cuda_extension binaries are in path
+        cuda_extension_path = Path(__file__).resolve().parents[0] / "cuda_extensions_cuda121_py310"
+        for plugin in [ "bias_act_plugin", "filtered_lrelu_plugin", "upfirdn2d_plugin"]:
+            path = str(cuda_extension_path / plugin)
+            if plugin not in sys.path:
+                sys.path.append(plugin)
     logger(f"Model: {global_state.device}")
 
 def update_image_format():
