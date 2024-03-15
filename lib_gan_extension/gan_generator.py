@@ -4,6 +4,7 @@ from pathlib import Path
 import numpy as np
 from PIL import Image
 import random
+import sys
 
 from modules.images import save_image_with_geninfo
 from modules.paths_internal import default_output_dir
@@ -50,6 +51,7 @@ class GanGenerator:
 
     def set_model(self, model_name: str) -> None:
         self.device = global_state.device
+
         if model_name != self.model_name:
             self.model_name = model_name
             self.output_path().mkdir(parents=True, exist_ok=True)
