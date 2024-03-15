@@ -47,7 +47,7 @@ def on_ui_tabs():
                     )
 
         with gr.Tabs():
-            with gr.TabItem('Simple Image Gen'):
+            with gr.TabItem('Simple Image Gen', elem_id="simple-tab"):
                 with gr.Row():
                     with gr.Column():
                         psiSlider = gr.Slider(-1,1,
@@ -62,10 +62,10 @@ def on_ui_tabs():
 
                             seed_recycleButton = ToolButton(ui.reuse_symbol, tooltip="Reuse seed from last generation")
 
-                        simple_runButton = gr.Button('Generate Simple Image', variant="primary")
+                        simple_runButton = gr.Button('Generate Simple Image', variant="primary", id="simple_generate")
 
                     with gr.Column():
-                        resultImg = gr.Image(label='Result', elem_id='result', sources=['upload','clipboard'], interactive=True, type="filepath")
+                        resultImg = gr.Image(label='Result', sources=['upload','clipboard'], interactive=True, type="filepath", elem_classes="gan-output")
                         resultImg.upload(
                             fn=get_params_from_image,
                             inputs=[resultImg],
@@ -77,7 +77,7 @@ def on_ui_tabs():
                             seed1_to_mixButton = gr.Button('Send to Seed Mixer › Left')
                             seed2_to_mixButton = gr.Button('Send to Seed Mixer › Right')
 
-            with gr.TabItem('Seed Mixer'):
+            with gr.TabItem('Seed Mixer', elem_id="mix-tab"):
                 with gr.Row():
                     mix_seed1_Num = gr.Number(label='Seed 1', value=lambda: -1, min_width=150, precision=0)
 
@@ -114,9 +114,9 @@ def on_ui_tabs():
 
                     mix_runButton = gr.Button('Generate Style Mix', variant="primary")
 
-                with gr.Row():
-                        with gr.Column():
-                            mix_seed1_Img = gr.Image(label='Seed 1 Image',sources=['upload','clipboard'], interactive=True, type="filepath")
+                with gr.Row(elem_id="mix-row"):
+                        with gr.Column(elem_classes="mix-item"):
+                            mix_seed1_Img = gr.Image(label='Seed 1 Image',sources=['upload','clipboard'], interactive=True, type="filepath", elem_classes="gan-output")
                             mix_seed1_Txt = gr.Markdown(label='Seed 1', value="")
                             mix_seed1_Img.upload(
                                 fn=get_seed_from_image,
@@ -124,16 +124,16 @@ def on_ui_tabs():
                                 outputs=[mix_seed1_Num],
                                 show_progress=False
                             )
-                        with gr.Column():
-                            mix_styleImg = gr.Image(label='Style Mixed Image', sources=['upload','clipboard'], interactive=True, type="filepath")
+                        with gr.Column(elem_classes="mix-item"):
+                            mix_styleImg = gr.Image(label='Style Mixed Image', sources=['upload','clipboard'], interactive=True, type="filepath", elem_classes="gan-output")
                             mix_styleImg.upload(
                                 fn=get_mix_params_from_image,
                                 inputs=[mix_styleImg],
                                 outputs=[mix_seed1_Num, mix_seed2_Num, mix_mixSlider, mix_maskDrop],
                                 show_progress=False
                             )
-                        with gr.Column():
-                            mix_seed2_Img = gr.Image(label='Seed 2 Image', sources=['upload','clipboard'], interactive=True, type="filepath")
+                        with gr.Column(elem_classes="mix-item"):
+                            mix_seed2_Img = gr.Image(label='Seed 2 Image', sources=['upload','clipboard'], interactive=True, type="filepath", elem_classes="gan-output")
                             mix_seed2_Txt = gr.Markdown(label='Seed 2', value="")
                             mix_seed2_Img.upload(
                                 fn=get_seed_from_image,
