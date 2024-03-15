@@ -104,23 +104,27 @@ def on_ui_tabs():
                                 label='Truncation (psi)')  
                 with gr.Row():
                     mix_maskDrop = gr.Dropdown(
-                        choices=[ "total (0xFFFF)", "coarse (0xFF00)", "mid (0x0FF0)", "fine (0x00FF)", "alt1 (0xF0F0)", "alt2 (0x0F0F)", "alt3 (0xF00F)"], label="Interpolation Mask", value="coarse (0xFF00)"
+                        choices=[ "total (0xFFFF)", "coarse (0xFF00)", "mid (0x0FF0)", "fine (0x00FF)", "alt1 (0xF0F0)", "alt2 (0x0F0F)", "alt3 (0xF00F)"], label="Interpolation Mask", value="total (0xFFFF)"
                     )
-                    mix_mixSlider = gr.Slider(-1,1,
+                    mix_mixSlider = gr.Slider(0,1,
                                     step=0.01,
-                                    value=1.0,
+                                    value=0.5,
                                     label='Seed Mix (Crossfade)')
 
-                    def update_mix_range(mask, mix_value):
+                    def update_mix_range(mask=str, mix_value=float):
                         print("dynamically changing mixSlider range...")
                         if "total" in mask:
-                            mix_mixSlider.update(minimum=0, maximum=1)
-                            return 0.5 # default value
+                            # clamp mix_value
+                            if mix_value > 1.0:
+                                mix_value = 1.0
+                            elif mix_value < -1.0:
+                                mix_value = -1.0
+                            # rescale to 0-1
+                            mix_value = GanGenerator.jmap(mix_value, -1.0, 1.0, 0, 1.0)
+                            mix_mixSlider.update(minimum=0, maximum=1, value=mix_value)
                         else:
-                            mix_mixSlider.update(minimum=-1.5, maximum=1.5)
-                            return mix_value
-
-                    mix_maskDrop.input(update_mix_range, inputs=[mix_maskDrop, mix_mixSlider], outputs=[mix_mixSlider], show_progress=False)
+                            mix_mixSlider.update(minimum=1.5, maximum=1.5, value=mix_value)
+                    mix_maskDrop.change(update_mix_range, inputs=[mix_maskDrop, mix_mixSlider], outputs=[], show_progress=False)
 
                     mix_runButton = gr.Button('Generate Style Mix', variant="primary")
 
@@ -169,6 +173,8 @@ def on_ui_tabs():
                         outputs=[mix_seed1_Img, mix_seed2_Img, mix_styleImg, mix_seed1_Txt, mix_seed2_Txt])
 
         return [(ui_component, "GAN Generator", "gan_generator_tab")]
+
+
 
 script_callbacks.on_ui_tabs(on_ui_tabs)
 
