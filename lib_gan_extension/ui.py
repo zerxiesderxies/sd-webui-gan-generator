@@ -112,7 +112,6 @@ def on_ui_tabs():
                                     label='Seed Mix (Crossfade)')
 
                     def update_mix_range(mask=str, mix_value=float):
-                        print("dynamically changing mixSlider range...")
                         if "total" in mask:
                             # clamp mix_value
                             if mix_value > 1.0:
