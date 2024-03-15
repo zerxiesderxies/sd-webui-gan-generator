@@ -25,7 +25,6 @@ Supports generation with the cpu or gpu0. See available pretrained networks via 
 Recommend using stylegan3-r-ffhq or stylegan2-celebahq
 '''
 
-
 def on_ui_tabs():
     with gr.Blocks(analytics_enabled=False, css='style.css') as ui_component:
         gr.Markdown(DESCRIPTION)
@@ -105,12 +104,23 @@ def on_ui_tabs():
                                 label='Truncation (psi)')  
                 with gr.Row():
                     mix_maskDrop = gr.Dropdown(
-                        choices=["coarse (0xFF00)", "mid (0x0FF0)", "fine (0x00FF)", "total (0xFFFF)", "alt1 (0xF0F0)", "alt2 (0x0F0F)", "alt3 (0xF00F)"], label="Interpolation Mask", value="coarse (0xFF00)"
+                        choices=[ "total (0xFFFF)", "coarse (0xFF00)", "mid (0x0FF0)", "fine (0x00FF)", "alt1 (0xF0F0)", "alt2 (0x0F0F)", "alt3 (0xF00F)"], label="Interpolation Mask", value="coarse (0xFF00)"
                     )
                     mix_mixSlider = gr.Slider(-1,1,
                                     step=0.01,
                                     value=1.0,
                                     label='Seed Mix (Crossfade)')
+
+                    def update_mix_range(mask, mix_value):
+                        print("dynamically changing mixSlider range...")
+                        if "total" in mask:
+                            mix_mixSlider.update(minimum=0, maximum=1)
+                            return 0.5 # default value
+                        else:
+                            mix_mixSlider.update(minimum=-1.5, maximum=1.5)
+                            return mix_value
+
+                    mix_maskDrop.input(update_mix_range, inputs=[mix_maskDrop, mix_mixSlider], outputs=[mix_mixSlider], show_progress=False)
 
                     mix_runButton = gr.Button('Generate Style Mix', variant="primary")
 
@@ -250,4 +260,3 @@ def get_mix_params_from_image(img) -> tuple[int,int,float,str]:
     model_name = p.get('model',model_name)
 
     return seed1, seed2, mix, mask #, model_name
-

@@ -73,8 +73,6 @@ class GanGenerator:
         return output
 
     def generate_image_mix(self, seed1: int, seed2: int, psi: float, interpType: str, mix: float, pad: float) -> np.ndarray:
-        slider_max = 2.0 # FIXME: this is a hack due to slider bug (range is stuck at 0-2)
-        mix = mix/slider_max
         params = {'seed1': seed1, 'seed2': seed2, 'mix': mix, 'interp': interpType}
 
         img1, w1 = self.find_or_generate_base_image_and_weights(seed1, psi)
@@ -201,13 +199,11 @@ class GanGenerator:
         w_mix = w1.clone() # transfer onto L image as default
 
         if mask != 0xFFFF:
-            amt = amt * 2.0 - 1.0 # rescale between -1 and 1
             if amt > 0: # transfer L onto R
                 w_mix = w2.clone()
             else: # transfer R onto L
                 i = abs(amt)
                 w1,w2 = w2,w1 # swap L and R
-            amt *= 1.5 # increase range
 
         mask = cls.num2mask(mask)
         w_mix[:,mask,:] = cls.xfade(w1[:,mask,:], w2[:,mask,:], amt)
