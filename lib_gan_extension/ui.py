@@ -98,10 +98,16 @@ def on_ui_tabs():
 
                     mix_seed2_recycleButton = ToolButton(ui.reuse_symbol, tooltip="Reuse seed from last generation")
 
-                mix_psiSlider = gr.Slider(-1,1,
-                                step=0.05,
-                                value=0.7,
-                                label='Truncation (psi)')  
+                with gr.Row():
+                    mix_psi1Slider = gr.Slider(-1,1,
+                                    step=0.05,
+                                    value=0.7,
+                                    label='Truncation (psi)')  
+                    mix_psi2Slider = gr.Slider(-1,1,
+                                    step=0.05,
+                                    value=0.7,
+                                    label='Truncation (psi)')  
+
                 with gr.Row():
                     mix_maskDrop = gr.Dropdown(
                         choices=[ "total (0xFFFF)", "coarse (0xFF00)", "mid (0x0FF0)", "fine (0x00FF)", "alt1 (0xF0F0)", "alt2 (0x0F0F)", "alt3 (0xF00F)"], label="Interpolation Mask", value=lambda:"total (0xFFFF)"
@@ -159,7 +165,7 @@ def on_ui_tabs():
         mix_seed2_recycleButton.click(fn=copy_seed,show_progress=False,inputs=[mix_seed2_Txt],outputs=[mix_seed2_Num])
 
         mix_runButton.click(fn=model.generate_mix_from_ui,
-                        inputs=[modelDrop, mix_seed1_Num, mix_seed2_Num, mix_psiSlider, mix_maskDrop, mix_mixSlider, mix_vector1, mix_vector2],
+                        inputs=[modelDrop, mix_seed1_Num, mix_psi1Slider, mix_seed2_Num, mix_psi2Slider, mix_maskDrop, mix_mixSlider, mix_vector1, mix_vector2],
                         outputs=[mix_seed1_Img, mix_seed2_Img, mix_styleImg, mix_seed1_Txt, mix_seed2_Txt, mix_vector1, mix_vector2, mix_vector_result])
 
         return [(ui_component, "GAN Generator", "gan_generator_tab")]
@@ -251,7 +257,6 @@ def get_mix_params_from_image(img) -> tuple[int,int,float,str]:
     seed1 = p.get('seed1',seed1)
     seed2 = p.get('seed2',seed2)
     mix = p.get('mix',mix)
-    psi = p.get('psi',psi)
     mask = p.get('mask',mask)
     model_name = p.get('model',model_name)
 

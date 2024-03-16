@@ -34,8 +34,8 @@ class GanGenerator:
         return img, seedTxt
         
 
-    def generate_mix_from_ui(self, model_name: str, seed1: int, seed2: int,
-                                     psi: float, interpType: str, mix: float, w1: str, w2: str) -> (Image.Image, Image.Image, Image.Image, str, str, str, str, str):
+    def generate_mix_from_ui(self, model_name: str, seed1: int,  psi1: float, seed2: int,
+                                     psi2: float, interpType: str, mix: float, w1: str, w2: str) -> (Image.Image, Image.Image, Image.Image, str, str, str, str, str):
 
         self.set_model(model_name)
 
@@ -47,7 +47,7 @@ class GanGenerator:
         w1 = str_utils.str2tensor(w1).to(self.device) if w1 != "" else None
         w2 = str_utils.str2tensor(w2).to(self.device) if w2 != "" else None
 
-        img1, img2, img3, w3 = self.generate_image_mix(seed1, seed2, psi, interpType, mix, global_state.image_pad, w1, w2)
+        img1, img2, img3, w3 = self.generate_image_mix(seed1, psi1, seed2, psi2, interpType, mix, global_state.image_pad, w1, w2)
         seedTxt1 = f"Seed 1: {str(seed1)} ({str_utils.num2hex(seed1)})" if w1 is None else "Seed 1: None (vector provided)"
         seedTxt2 = f"Seed 2: {str(seed2)} ({str_utils.num2hex(seed2)})" if w2 is None else "Seed 2: None (vector provided)"
 
@@ -72,27 +72,23 @@ class GanGenerator:
 
     def generate_image(self, seed: int, psi: float, pad: float=1.0) -> Image.Image:
         params = {'seed': seed, 'psi': psi}
-        output = self.find_or_generate_base_image(**params)
+        output, _ = self.find_or_generate_base_image(**params)
         if pad != 1.0:
             output = self.pad_image(output, pad)
-            padded_path = f"base-{seed}-{psi}-pad{pad}.{global_state.image_format}"
+            padded_path = self.image_path_with_params({**params, 'pad': pad})
             self.save_image_to_file(output, padded_path, params)
-            # logger(f"  Padded image by {pad}x")
         return output
 
-    def generate_image_mix(self, seed1: int, seed2: int, psi: float, interpType: str, mix: float, pad: float,
+    def generate_image_mix(self, seed1: int, psi1: float, seed2: int, psi2: float, interpType: str, mix: float, pad: float,
                             w1: Union[torch.Tensor,None], w2: Union[torch.Tensor,None]) -> (Image.Image, Image.Image, Image.Image, Union[torch.Tensor,None]):
-        slider_max = 2.0 # FIXME: this is a hack due to slider bug (range is stuck at 0-2)
-        mix = mix/slider_max
-        params = {'seed1': seed1, 'seed2': seed2, 'mix': mix, 'interp': interpType}
+        params = {'seed1': seed1, 'seed2': seed2, 'psi1': psi1, 'psi2': psi2, 'mix': mix, 'interp': interpType}
 
-        img1, w1 = self.find_or_generate_base_image(seed1, psi, w1)
+        img1, w1 = self.find_or_generate_base_image(seed1, psi1, w1)
         if seed1 == seed2:
             return img1, img1, img1, w1
-        img2, w2 = self.find_or_generate_base_image(seed2, psi, w2)
+        img2, w2 = self.find_or_generate_base_image(seed2, psi2, w2)
 
-        basename = f"mix-{seed1}-{seed2}-mix{mix}-{interpType}"
-        filename = f"{basename}.{global_state.image_format}"
+        filename = self.image_path_with_params(params, base="mix")
         img3 = self.find_output_image(filename)
         if img3 is None:
             w_mix = self.mix_weights(w1, w2, mix, interpType)
@@ -116,7 +112,7 @@ class GanGenerator:
         padImage.paste(image, box=(padding, padding))
         return padImage
 
-    def base_image_path(self, dictionary: dict, include_key: bool=False, base: str="base") -> str:
+    def image_path_with_params(self, dictionary: dict, include_key: bool=False, base: str="base") -> str:
         args_str = '-'.join(f"{key}_{value}" for key, value in dictionary.items())
         if include_key:
             args_str += '-' + '-'.join(f"{key}_{value}" for key, value in dictionary.items())
@@ -129,7 +125,7 @@ class GanGenerator:
         params = {'seed': seed, 'psi': psi}
         msg = f"Rendered with {str(params)}"
         if w is None:
-            img = self.find_output_image(self.base_image_path(params))
+            img = self.find_output_image(self.image_path_with_params(params))
             if img is None:
                 img, w = self.generate_base_image(seed=seed, psi=psi)
             else:
@@ -161,14 +157,14 @@ class GanGenerator:
         params = {'seed': seed, 'psi': psi}
         if w is not None: # don't save file
             img = self.GAN.w_to_image(w)
-            path = self.base_image_path({"hash": hash(w) }, base="tensor", include_key=True)
+            path = self.image_path_with_params({"hash": hash(w) }, base="tensor", include_key=True)
             params['tensor'] = str_utils.tensor2str(w)
             self.save_image_to_file(img, path, params)
             return img, w
         
         w = self.GAN.get_w_from_seed(**params)
         img = self.GAN.w_to_image(w)
-        path = self.base_image_path(params)
+        path = self.image_path_with_params(params)
         params['tensor'] = str_utils.tensor2str(w)
         self.save_image_to_file(img, path, params)
 
