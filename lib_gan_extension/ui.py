@@ -61,7 +61,7 @@ def on_ui_tabs():
 
                             seed_recycleButton = ToolButton(ui.reuse_symbol, tooltip="Reuse seed from last generation")
 
-                        simple_runButton = gr.Button('Generate Simple Image', variant="primary", id="simple_generate")
+                        simple_runButton = gr.Button('Generate Simple Image', variant="primary", elem_id="simple_generate")
 
                     with gr.Column():
                         resultImg = gr.Image(label='Result', sources=['upload','clipboard'], interactive=True, type="filepath", elem_classes="gan-output")
@@ -104,28 +104,14 @@ def on_ui_tabs():
                                 label='Truncation (psi)')  
                 with gr.Row():
                     mix_maskDrop = gr.Dropdown(
-                        choices=[ "total (0xFFFF)", "coarse (0xFF00)", "mid (0x0FF0)", "fine (0x00FF)", "alt1 (0xF0F0)", "alt2 (0x0F0F)", "alt3 (0xF00F)"], label="Interpolation Mask", value="total (0xFFFF)"
+                        choices=[ "total (0xFFFF)", "coarse (0xFF00)", "mid (0x0FF0)", "fine (0x00FF)", "alt1 (0xF0F0)", "alt2 (0x0F0F)", "alt3 (0xF00F)"], label="Interpolation Mask", value=lambda:"total (0xFFFF)"
                     )
-                    mix_mixSlider = gr.Slider(0,1,
+                    mix_mixSlider = gr.Slider(-1,1,
                                     step=0.01,
-                                    value=0.5,
+                                    value=0,
                                     label='Seed Mix (Crossfade)')
 
-                    def update_mix_range(mask=str, mix_value=float):
-                        if "total" in mask:
-                            # clamp mix_value
-                            if mix_value > 1.0:
-                                mix_value = 1.0
-                            elif mix_value < -1.0:
-                                mix_value = -1.0
-                            # rescale to 0-1
-                            mix_value = GanGenerator.jmap(mix_value, -1.0, 1.0, 0, 1.0)
-                            mix_mixSlider.update(minimum=0, maximum=1, value=mix_value)
-                        else:
-                            mix_mixSlider.update(minimum=1.5, maximum=1.5, value=mix_value)
-                    mix_maskDrop.change(update_mix_range, inputs=[mix_maskDrop, mix_mixSlider], outputs=[], show_progress=False)
-
-                    mix_runButton = gr.Button('Generate Style Mix', variant="primary")
+                    mix_runButton = gr.Button('Generate Style Mix', variant="primary", elem_id="mix_generate")
 
                 with gr.Row(elem_id="mix-row"):
                         with gr.Column(elem_classes="mix-item"):

@@ -198,11 +198,13 @@ class GanGenerator:
 
         w_mix = w1.clone() # transfer onto L image as default
 
-        if mask != 0xFFFF:
+        if mask == 0xFFFF:
+            amt = cls.jmap(amt, -1.0, 1.0, 0.0, 1.0) # make unipolar
+        else:
             if amt > 0: # transfer L onto R
                 w_mix = w2.clone()
             else: # transfer R onto L
-                i = abs(amt)
+                amt = abs(amt)
                 w1,w2 = w2,w1 # swap L and R
 
         mask = cls.num2mask(mask)
