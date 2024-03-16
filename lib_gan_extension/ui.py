@@ -66,9 +66,9 @@ def on_ui_tabs():
                     with gr.Column():
                         resultImg = gr.Image(label='Result', sources=['upload','clipboard'], interactive=True, type="filepath", elem_classes="gan-output")
                         resultImg.upload(
-                            fn=get_params_from_image,
+                            fn=get_seed_from_image,
                             inputs=[resultImg],
-                            outputs=[seedNum,psiSlider],
+                            outputs=[seedNum],
                             show_progress=False
                         )
                         seedTxt = gr.Markdown(label='Output Seed')
