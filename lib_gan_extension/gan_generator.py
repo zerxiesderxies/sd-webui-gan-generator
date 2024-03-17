@@ -95,12 +95,12 @@ class GanGenerator:
                                     Union[torch.Tensor,None], Union[torch.Tensor,None], Union[torch.Tensor,None]):
         params = {'seed1': seed1, 'seed2': seed2, 'psi1': psi1, 'psi2': psi2, 'mix': mix, 'interp': interpType}
         vparams = {}
-        if w1 is not None:
+        if seed1 is None and w1 is not None:
             vparams['tensor1'] = str_utils.tensor2str(w1)
-            params['seed1'] = f"V{hash(w1)}"
-        if w2 is not None:
+            params['seed1'] = f"V{str_utils.crc_hash(vparams['tensor1'])}"
+        if seed2 is None and w2 is not None:
             vparams['tensor2'] = str_utils.tensor2str(w2)
-            params['seed2'] = f"V{hash(w2)}"
+            params['seed2'] = f"V{str_utils.crc_hash(vparams['tensor2'])}"
 
         img1, w1 = self.find_or_generate_base_image(seed1, psi1, w1)
         if seed1 == seed2:
@@ -164,7 +164,7 @@ class GanGenerator:
                 msg += " (cached on disk)"
         else:
             img, w = self.generate_base_image(seed=seed, psi=psi, w=w)
-            msg = f"Rendered from encoded Tensor {hash(w)}"
+            msg = f"Rendered from encoded Tensor {str_utils.crc_hash(w)}"
 
         logger(msg)
 

@@ -3,6 +3,7 @@ import re
 import io
 import base64
 import zlib
+import hashlib
 import torch
 import numpy as np
 from .global_state import logger
@@ -48,3 +49,11 @@ def str2tensor(encoded: str) -> torch.Tensor:
         tensor = np.load(f)
 
     return torch.tensor(tensor)
+
+def crc_hash(string: str) -> str:  # 8 characters
+    crc = zlib.crc32(string.encode())
+    return format(crc & 0xFFFFFFFF, '08x')
+
+def sha_hash(string: str) -> str:    # 64 characters
+    return hashlib.sha256(string.encode()).hexdigest()
+

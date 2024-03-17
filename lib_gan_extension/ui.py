@@ -264,7 +264,7 @@ def get_mix_params_from_image(img) -> tuple[int,int,float,str,
     psi,mask,model_name = 0.7, "total (0xFFFF)", default_model()
 
     p = metadata.parse_params_from_image(img)
-    logger(repr(p))
+    # logger(repr(p))
     seed1 = p.get('seed1',seed1)
     seed2 = p.get('seed2',seed2)
     if isinstance(seed1, str) and "V" in seed1:
