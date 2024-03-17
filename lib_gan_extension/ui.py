@@ -5,6 +5,7 @@ import os
 import ast
 from PIL import Image
 from pathlib import Path
+import torch
 
 import gradio as gr
 from modules import script_callbacks, shared, ui, ui_components
@@ -67,13 +68,13 @@ def on_ui_tabs():
 
                     with gr.Column():
                         resultImg = gr.Image(label='Result', sources=['upload','clipboard'], interactive=True, type="filepath", elem_classes="gan-output")
+                        seedTxt = gr.Markdown(label='Output Seed')
                         resultImg.upload(
-                            fn=get_seed_from_image,
+                            fn=get_simple_params_from_image,
                             inputs=[resultImg],
-                            outputs=[seedNum],
+                            outputs=[seedNum, psiSlider, resultImg, seedTxt],
                             show_progress=False
                         )
-                        seedTxt = gr.Markdown(label='Output Seed')
                         with gr.Row():
                             seed1_to_mixButton = gr.Button('Send to Seed Mixer › Left')
                             seed2_to_mixButton = gr.Button('Send to Seed Mixer › Right')
@@ -97,11 +98,11 @@ def on_ui_tabs():
                     mix_seed2_recycleButton = ToolButton(ui.reuse_symbol, tooltip="Reuse seed from last generation")
 
                 with gr.Row():
-                    mix_psi1Slider = gr.Slider(-1,1,
+                    mix_psi1_Slider = gr.Slider(-1,1,
                                     step=0.05,
                                     value=0.7,
                                     label='Truncation (psi)')
-                    mix_psi2Slider = gr.Slider(-1,1,
+                    mix_psi2_Slider = gr.Slider(-1,1,
                                     step=0.05,
                                     value=0.7,
                                     label='Truncation (psi)')  
@@ -124,9 +125,9 @@ def on_ui_tabs():
                         mix_vector1 = gr.Textbox(label='Vector 1', type="text", visible=DEBUG_VECTORS)
 
                         mix_seed1_Img.upload(
-                            fn=get_seed_or_vector_from_image,
+                            fn=get_params_from_image,
                             inputs=[mix_seed1_Img],
-                            outputs=[mix_seed1_Num, mix_vector1],
+                            outputs=[mix_seed1_Num, mix_psi1_Slider, mix_vector1],
                             show_progress=False
                         )
 
@@ -140,9 +141,9 @@ def on_ui_tabs():
                         mix_vector2 = gr.Textbox(label='Vector 2', type="text", visible=DEBUG_VECTORS)
 
                         mix_seed2_Img.upload(
-                            fn=get_seed_or_vector_from_image,
+                            fn=get_params_from_image,
                             inputs=[mix_seed2_Img],
-                            outputs=[mix_seed2_Num, mix_vector2],
+                            outputs=[mix_seed2_Num, mix_psi2_Slider, mix_vector2],
                             show_progress=False
                         )
 
@@ -160,20 +161,18 @@ def on_ui_tabs():
                     mix_seed2_randButton.click(fn=lambda: clearSeed(-1), show_progress=False, inputs=[], outputs=[mix_seed2_Num, mix_vector2])
                     mix_seed1_recycleButton.click(fn=copy_seed,show_progress=False,inputs=[mix_seed1_Txt],outputs=[mix_seed1_Num, mix_vector1])
                     mix_seed2_recycleButton.click(fn=copy_seed,show_progress=False,inputs=[mix_seed2_Txt],outputs=[mix_seed2_Num, mix_vector2])
-                    mix_psi1Slider.input(fn=lambda:None, inputs=[], outputs=mix_vector1)
-                    mix_psi2Slider.input(fn=lambda:None, inputs=[], outputs=mix_vector2)
+                    mix_psi1_Slider.change(fn=lambda:None, inputs=[], outputs=mix_vector1)
+                    mix_psi2_Slider.change(fn=lambda:None, inputs=[], outputs=mix_vector2)
 
                     mix_runButton.click(fn=model.generate_mix_from_ui,
-                                    inputs=[modelDrop, mix_seed1_Num, mix_psi1Slider, mix_seed2_Num, mix_psi2Slider, mix_maskDrop, mix_Slider, mix_vector1, mix_vector2],
+                                    inputs=[modelDrop, mix_seed1_Num, mix_psi1_Slider, mix_seed2_Num, mix_psi2_Slider, mix_maskDrop, mix_Slider, mix_vector1, mix_vector2],
                                     outputs=[mix_seed1_Img, mix_seed2_Img, mix_styleImg, mix_seed1_Txt, mix_seed2_Txt, mix_vector1, mix_vector2, mix_vector_result])
 
             seed1_to_mixButton.click(fn=copy_seed, inputs=[seedTxt],outputs=[mix_seed1_Num])
             seed2_to_mixButton.click(fn=copy_seed, inputs=[seedTxt],outputs=[mix_seed2_Num])
 
-
+        gui = ui_component
         return [(ui_component, "GAN Generator", "gan_generator_tab")]
-
-
 
 script_callbacks.on_ui_tabs(on_ui_tabs)
 
@@ -208,7 +207,6 @@ def default_model() -> Union[str, None]:
 def touch_model_file(modelDrop) -> None:
     file_utils.touch( file_utils.model_path / modelDrop )
 
-import torch
 def default_device() -> str:
     if torch.backends.mps.is_available():
         default_device = "mps"
@@ -239,24 +237,25 @@ def update_image_padding():
 
 
 # fetch metadata from drag-and-drop (gr.Image.upload callback)
-def get_seed_from_image(img) -> int:
-    return get_seed_or_vector_from_image(img)[0]
-
-def get_seed_or_vector_from_image(img) -> int:
+def get_simple_params_from_image(img) -> (int, float, Union[Image.Image,None], str ):
     p = metadata.parse_params_from_image(img)
+    if p.get('mix') is not None:
+        msg = 'Params of that image are not simple. Use the "Seed Mixer" tab to remix it.'
+        return -1, 0.7, None, msg
     seed = p.get('seed',-1)
-    vector = p.get('tensor',None)
-    return seed, vector
+    psi = p.get('psi',0.7)
+    return seed, psi, img, ""
 
-def get_params_from_image(img) -> tuple[int,float]:
-    seed,psi,model_name = -1, 0.7, default_model()
+def get_params_from_image(img) -> int:
     p = metadata.parse_params_from_image(img)
-    seed = p.get('seed',seed)
-    seed = p.get('seed', p.get('seed1',seed))
-    psi = p.get('psi',psi)
-    model_name = p.get('model',model_name)
-         
-    return seed, psi #, model_name
+    vector = p.get('tensor',None)
+    if vector is not None:
+        seed = None
+        psi = 0.7
+    else:
+        seed = p.get('seed',-1)
+        psi = p.get('psi',0.7)
+    return seed, psi, vector
  
 def get_mix_params_from_image(img) -> tuple[int,int,float,str,
         Union[str,None], Union[str,None], Union[str,None] ]:
@@ -264,7 +263,6 @@ def get_mix_params_from_image(img) -> tuple[int,int,float,str,
     psi,mask,model_name = 0.7, "total (0xFFFF)", default_model()
 
     p = metadata.parse_params_from_image(img)
-    # logger(repr(p))
     seed1 = p.get('seed1',seed1)
     seed2 = p.get('seed2',seed2)
     if isinstance(seed1, str) and "V" in seed1:
@@ -280,3 +278,4 @@ def get_mix_params_from_image(img) -> tuple[int,int,float,str,
 
 def clearSeed(value: int=-1):
     return value, None
+

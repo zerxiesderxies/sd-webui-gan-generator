@@ -5,6 +5,7 @@ import numpy as np
 from PIL import Image
 import random
 import sys
+import torch
 
 from modules.images import save_image_with_geninfo
 from modules.paths_internal import default_output_dir
@@ -103,7 +104,7 @@ class GanGenerator:
             params['seed2'] = f"V{str_utils.crc_hash(vparams['tensor2'])}"
 
         img1, w1 = self.find_or_generate_base_image(seed1, psi1, w1)
-        if seed1 == seed2:
+        if seed1 == seed2 and torch.equal(w1,w2):
             return img1, img1, img1, w1, w1, w1
         img2, w2 = self.find_or_generate_base_image(seed2, psi2, w2)
 
@@ -164,7 +165,8 @@ class GanGenerator:
                 msg += " (cached on disk)"
         else:
             img, w = self.generate_base_image(seed=seed, psi=psi, w=w)
-            msg = f"Rendered from encoded Tensor {str_utils.crc_hash(w)}"
+            vstr = str_utils.tensor2str(w)
+            msg = f"Rendered from encoded Tensor V{str_utils.crc_hash(vstr)}"
 
         logger(msg)
 

@@ -56,4 +56,3 @@ def crc_hash(string: str) -> str:  # 8 characters
 
 def sha_hash(string: str) -> str:    # 64 characters
     return hashlib.sha256(string.encode()).hexdigest()
-
