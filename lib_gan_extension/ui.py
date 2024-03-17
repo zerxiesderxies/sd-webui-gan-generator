@@ -17,6 +17,8 @@ ui.folder_symbol = "\U0001F4C1"  # 📁
 
 model = GanGenerator()
 
+DEBUG_VECTORS = False
+
 DESCRIPTION = '''# StyleGAN Image Generator
 
 Use this tool to generate random images with a pretrained StyleGAN3 network of your choice. 
@@ -108,7 +110,7 @@ def on_ui_tabs():
                     mix_maskDrop = gr.Dropdown(
                         choices=[ "total (0xFFFF)", "coarse (0xFF00)", "mid (0x0FF0)", "fine (0x00FF)", "alt1 (0xF0F0)", "alt2 (0x0F0F)", "alt3 (0xF00F)"], label="Interpolation Mask", value=lambda:"total (0xFFFF)"
                     )
-                    mix_mixSlider = gr.Slider(-1,1,
+                    mix_Slider = gr.Slider(-1,1,
                                     step=0.01,
                                     value=0,
                                     label='Seed Mix (Crossfade)')
@@ -119,7 +121,7 @@ def on_ui_tabs():
                     with gr.Column(elem_classes="mix-item"):
                         mix_seed1_Img = gr.Image(label='Seed 1 Image',sources=['upload','clipboard'], interactive=True, type="filepath", elem_classes="gan-output")
                         mix_seed1_Txt = gr.Markdown(label='Seed 1', value="")
-                        mix_vector1 = gr.Textbox(label='Vector 1', type="text", visible=False)
+                        mix_vector1 = gr.Textbox(label='Vector 1', type="text", visible=DEBUG_VECTORS)
 
                         mix_seed1_Img.upload(
                             fn=get_seed_or_vector_from_image,
@@ -130,12 +132,12 @@ def on_ui_tabs():
 
                     with gr.Column(elem_classes="mix-item"):
                         mix_styleImg = gr.Image(label='Style Mixed Image', sources=['upload','clipboard'], interactive=True, type="filepath", elem_classes="gan-output")
-                        mix_vector_result = gr.Textbox(label='Vector Result', type="text", visible=False)
+                        mix_vector_result = gr.Textbox(label='Vector Result', type="text", visible=DEBUG_VECTORS)
 
                     with gr.Column(elem_classes="mix-item"):
                         mix_seed2_Img = gr.Image(label='Seed 2 Image', sources=['upload','clipboard'], interactive=True, type="filepath", elem_classes="gan-output")
                         mix_seed2_Txt = gr.Markdown(label='Seed 2', value="")
-                        mix_vector2 = gr.Textbox(label='Vector 2', type="text", visible=False)
+                        mix_vector2 = gr.Textbox(label='Vector 2', type="text", visible=DEBUG_VECTORS)
 
                         mix_seed2_Img.upload(
                             fn=get_seed_or_vector_from_image,
@@ -147,7 +149,7 @@ def on_ui_tabs():
                     mix_styleImg.upload(
                         fn=get_mix_params_from_image,
                         inputs=[mix_styleImg],
-                        outputs=[mix_seed1_Num, mix_seed2_Num, mix_mixSlider, mix_maskDrop, mix_vector1, mix_vector2, mix_vector_result],
+                        outputs=[mix_seed1_Num, mix_seed2_Num, mix_Slider, mix_maskDrop, mix_vector1, mix_vector2, mix_vector_result],
                         show_progress=False
                     )
 
@@ -162,7 +164,7 @@ def on_ui_tabs():
                     mix_psi2Slider.input(fn=lambda:None, inputs=[], outputs=mix_vector2)
 
                     mix_runButton.click(fn=model.generate_mix_from_ui,
-                                    inputs=[modelDrop, mix_seed1_Num, mix_psi1Slider, mix_seed2_Num, mix_psi2Slider, mix_maskDrop, mix_mixSlider, mix_vector1, mix_vector2],
+                                    inputs=[modelDrop, mix_seed1_Num, mix_psi1Slider, mix_seed2_Num, mix_psi2Slider, mix_maskDrop, mix_Slider, mix_vector1, mix_vector2],
                                     outputs=[mix_seed1_Img, mix_seed2_Img, mix_styleImg, mix_seed1_Txt, mix_seed2_Txt, mix_vector1, mix_vector2, mix_vector_result])
 
             seed1_to_mixButton.click(fn=copy_seed, inputs=[seedTxt],outputs=[mix_seed1_Num])
@@ -256,19 +258,24 @@ def get_params_from_image(img) -> tuple[int,float]:
          
     return seed, psi #, model_name
  
-def get_mix_params_from_image(img) -> tuple[int,int,float,str]:
+def get_mix_params_from_image(img) -> tuple[int,int,float,str,
+        Union[str,None], Union[str,None], Union[str,None] ]:
     seed1,seed2,mix = -1, -1, 0
     psi,mask,model_name = 0.7, "total (0xFFFF)", default_model()
 
     p = metadata.parse_params_from_image(img)
+    logger(repr(p))
     seed1 = p.get('seed1',seed1)
     seed2 = p.get('seed2',seed2)
+    if isinstance(seed1, str) and "V" in seed1:
+        seed1 = None
+    if isinstance(seed2, str) and "V" in seed2:
+        seed2 = None
     mix = p.get('mix',mix)
     mask = p.get('mask',mask)
     vector1 = p.get('tensor1',None)
     vector2 = p.get('tensor2',None)
     vector_mix = p.get('tensor',None)
-    
     return seed1, seed2, mix, mask, vector1, vector2, vector_mix
 
 def clearSeed(value: int=-1):
