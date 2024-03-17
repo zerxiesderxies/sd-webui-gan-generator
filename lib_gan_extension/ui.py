@@ -241,7 +241,7 @@ def update_image_padding():
 
 # fetch metadata from drag-and-drop (gr.Image.upload callback)
 def get_seed_from_image(img) -> int:
-    return get_params_from_image(img)[0]
+    return get_seed_or_vector_from_image(img)[0]
 
 def get_seed_or_vector_from_image(img) -> int:
     p = metadata.parse_params_from_image(img)
