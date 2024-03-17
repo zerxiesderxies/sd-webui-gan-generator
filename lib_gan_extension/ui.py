@@ -213,8 +213,8 @@ def touch_model_file(modelDrop) -> None:
 def default_device() -> str:
     if torch.backends.mps.is_available():
         default_device = "mps"
-    # elif torch.cuda.is_available():
-    #     default_device = "cuda"
+    elif torch.cuda.is_available():
+        default_device = "cuda"
     else:
         default_device = "cpu"
     return default_device
@@ -226,8 +226,8 @@ def update_device():
         cuda_extension_path = Path(__file__).resolve().parents[0] / "cuda_extensions_cuda121_py310"
         for plugin in [ "bias_act_plugin", "filtered_lrelu_plugin", "upfirdn2d_plugin"]:
             path = str(cuda_extension_path / plugin)
-            if plugin not in sys.path:
-                sys.path.append(plugin)
+            if path not in sys.path:
+                sys.path.append(path)
     logger(f"Model: {global_state.device}")
 
 def update_image_format():
