@@ -98,7 +98,7 @@ def on_ui_tabs():
                     mix_psi1Slider = gr.Slider(-1,1,
                                     step=0.05,
                                     value=0.7,
-                                    label='Truncation (psi)')  
+                                    label='Truncation (psi)')
                     mix_psi2Slider = gr.Slider(-1,1,
                                     step=0.05,
                                     value=0.7,
@@ -151,12 +151,15 @@ def on_ui_tabs():
                         show_progress=False
                     )
 
+                    # reset vectors when seeds or psi changes
                     mix_seed1_luckyButton.click(fn=lambda: clearSeed(model.newSeed()), show_progress=False, inputs=[], outputs=[mix_seed1_Num, mix_vector1])
                     mix_seed2_luckyButton.click(fn=lambda: clearSeed(model.newSeed()), show_progress=False, inputs=[], outputs=[mix_seed2_Num, mix_vector2])
                     mix_seed1_randButton.click(fn=lambda: clearSeed(-1), show_progress=False, inputs=[], outputs=[mix_seed1_Num, mix_vector1])
                     mix_seed2_randButton.click(fn=lambda: clearSeed(-1), show_progress=False, inputs=[], outputs=[mix_seed2_Num, mix_vector2])
                     mix_seed1_recycleButton.click(fn=copy_seed,show_progress=False,inputs=[mix_seed1_Txt],outputs=[mix_seed1_Num, mix_vector1])
                     mix_seed2_recycleButton.click(fn=copy_seed,show_progress=False,inputs=[mix_seed2_Txt],outputs=[mix_seed2_Num, mix_vector2])
+                    mix_psi1Slider.input(fn=lambda:None, inputs=[], outputs=mix_vector1)
+                    mix_psi2Slider.input(fn=lambda:None, inputs=[], outputs=mix_vector2)
 
                     mix_runButton.click(fn=model.generate_mix_from_ui,
                                     inputs=[modelDrop, mix_seed1_Num, mix_psi1Slider, mix_seed2_Num, mix_psi2Slider, mix_maskDrop, mix_mixSlider, mix_vector1, mix_vector2],
