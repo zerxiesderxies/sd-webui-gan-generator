@@ -7,16 +7,6 @@ from modules import shared
 
 model_path = Path(__file__).resolve().parents[1] / "models"
 
-def mkdir_p(path):
-    try:
-        os.makedirs(path)
-    except FileExistsError:
-        # If the directory already exists, it's okay
-        pass
-    except OSError as e:
-        # Handle other errors
-        print(f"Error creating directory: {e}")
-
 def touch(filename: str) -> None:
     with open(filename, 'a'):
         os.utime(filename, None)  # Update the modification timestamp
