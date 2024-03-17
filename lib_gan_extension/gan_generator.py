@@ -36,20 +36,30 @@ class GanGenerator:
 
     def generate_mix_from_ui(self, model_name: str, seed1: int,  psi1: float, seed2: int,
                                      psi2: float, interpType: str, mix: float, w1: str, w2: str) -> (Image.Image, Image.Image, Image.Image, str, str, str, str, str):
-
+        w1 = None if w1 == "" else w1
+        w2 = None if w2 == "" else w2
         self.set_model(model_name)
 
-        if seed1 == -1:
-            seed1 = self.newSeed()
-        if seed2 == -1:
-            seed2 = self.newSeed()
-
-        w1 = str_utils.str2tensor(w1).to(self.device) if w1 != "" else None
-        w2 = str_utils.str2tensor(w2).to(self.device) if w2 != "" else None
+        if seed1 is None:
+            seedTxt1 = "Seed 1: None (vector provided)"
+        else:
+            if seed1 == -1:
+                seed1 = self.newSeed()
+                w1 = None
+            seedTxt1 = f"Seed 1: {seed1} ({str_utils.num2hex(seed1)})"
+    
+        if seed2 is None:
+            seedTxt2 = "Seed 1: None (vector provided)"
+        else:
+            if seed2 == -1:
+                seed2 = self.newSeed()
+                w2 = None
+            seedTxt2 = f"Seed 1: {seed2} ({str_utils.num2hex(seed2)})"
+    
+        w1 = str_utils.str2tensor(w1).to(self.device) if w1 is not None else None
+        w2 = str_utils.str2tensor(w2).to(self.device) if w2 is not None else None
 
         img1, img2, img3, w1, w2, w3 = self.generate_image_mix(seed1, psi1, seed2, psi2, interpType, mix, global_state.image_pad, w1, w2)
-        seedTxt1 = f"Seed 1: {str(seed1)} ({str_utils.num2hex(seed1)})" if w1 is None else "Seed 1: None (vector provided)"
-        seedTxt2 = f"Seed 2: {str(seed2)} ({str_utils.num2hex(seed2)})" if w2 is None else "Seed 2: None (vector provided)"
 
         w1 = str_utils.tensor2str(w1)
         w2 = str_utils.tensor2str(w2)

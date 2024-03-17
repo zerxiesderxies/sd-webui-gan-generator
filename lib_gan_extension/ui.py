@@ -76,26 +76,22 @@ def on_ui_tabs():
                             seed1_to_mixButton = gr.Button('Send to Seed Mixer › Left')
                             seed2_to_mixButton = gr.Button('Send to Seed Mixer › Right')
 
+            seed_recycleButton.click(fn=copy_seed,show_progress=False,inputs=[seedTxt],outputs=[seedNum])
+
+            simple_runButton.click(fn=model.generate_image_from_ui,
+                            inputs=[modelDrop, seedNum, psiSlider],
+                            outputs=[resultImg, seedTxt])
+
             with gr.TabItem('Seed Mixer', elem_id="mix-tab"):
                 with gr.Row():
-                    mix_seed1_Num = gr.Number(label='Seed 1', value=lambda: -1, min_width=150, precision=0)
-
+                    mix_seed1_Num = gr.Number(label='Seed 1', value=lambda:-1, min_width=150, precision=0)
                     mix_seed1_luckyButton = ToolButton(ui.lucky_symbol, tooltip="Roll generate a new seed")
-                    mix_seed1_luckyButton.click(fn=lambda: mix_seed1_Num.update(value=model.newSeed()), show_progress=False, inputs=[], outputs=[mix_seed1_Num])
-
                     mix_seed1_randButton = ToolButton(ui.random_symbol, tooltip="Set seed to -1, which will cause a new random number to be used every time")
-                    mix_seed1_randButton.click(fn=lambda: mix_seed1_Num.update(value=-1), show_progress=False, inputs=[], outputs=[mix_seed1_Num])
-
                     mix_seed1_recycleButton = ToolButton(ui.reuse_symbol, tooltip="Reuse seed from last generation")
 
-                    mix_seed2_Num = gr.Number(label='Seed 2', value=lambda: -1, min_width=150, precision=0)
-
+                    mix_seed2_Num = gr.Number(label='Seed 2', value=lambda:-1, min_width=150, precision=0)
                     mix_seed2_luckyButton = ToolButton(ui.lucky_symbol, tooltip="Roll generate a new seed")
-                    mix_seed2_luckyButton.click(fn=lambda: mix_seed2_Num.update(value=model.newSeed()), show_progress=False, inputs=[], outputs=[mix_seed2_Num])
-
                     mix_seed2_randButton = ToolButton(ui.random_symbol, tooltip="Set seed to -1, which will cause a new random number to be used every time")
-                    mix_seed2_randButton.click(fn=lambda: mix_seed2_Num.update(value=-1), show_progress=False, inputs=[], outputs=[mix_seed2_Num])
-
                     mix_seed2_recycleButton = ToolButton(ui.reuse_symbol, tooltip="Reuse seed from last generation")
 
                 with gr.Row():
@@ -120,57 +116,55 @@ def on_ui_tabs():
                     mix_runButton = gr.Button('Generate Style Mix', variant="primary", elem_id="mix_generate")
 
                 with gr.Row(elem_id="mix-row"):
-                        with gr.Column(elem_classes="mix-item"):
-                            mix_seed1_Img = gr.Image(label='Seed 1 Image',sources=['upload','clipboard'], interactive=True, type="filepath", elem_classes="gan-output")
-                            mix_seed1_Txt = gr.Markdown(label='Seed 1', value="")
-                            mix_vector1 = gr.Textbox(label='Vector 1', type="text", visible=False)
+                    with gr.Column(elem_classes="mix-item"):
+                        mix_seed1_Img = gr.Image(label='Seed 1 Image',sources=['upload','clipboard'], interactive=True, type="filepath", elem_classes="gan-output")
+                        mix_seed1_Txt = gr.Markdown(label='Seed 1', value="")
+                        mix_vector1 = gr.Textbox(label='Vector 1', type="text", visible=False)
 
-                            mix_seed1_Img.upload(
-                                fn=get_seed_or_vector_from_image,
-                                inputs=[mix_seed1_Img],
-                                outputs=[mix_seed1_Num, mix_vector1],
-                                show_progress=False
-                            )
-
-                        with gr.Column(elem_classes="mix-item"):
-                            mix_styleImg = gr.Image(label='Style Mixed Image', sources=['upload','clipboard'], interactive=True, type="filepath", elem_classes="gan-output")
-                            mix_vector_result = gr.Textbox(label='Vector Result', type="text", visible=False)
-
-                        with gr.Column(elem_classes="mix-item"):
-                            mix_seed2_Img = gr.Image(label='Seed 2 Image', sources=['upload','clipboard'], interactive=True, type="filepath", elem_classes="gan-output")
-                            mix_seed2_Txt = gr.Markdown(label='Seed 2', value="")
-                            mix_vector2 = gr.Textbox(label='Vector 2', type="text", visible=False)
-
-                            mix_seed2_Img.upload(
-                                fn=get_seed_or_vector_from_image,
-                                inputs=[mix_seed2_Img],
-                                outputs=[mix_seed2_Num, mix_vector2],
-                                show_progress=False
-                            )
-
-                        mix_styleImg.upload(
-                            fn=get_mix_params_from_image,
-                            inputs=[mix_styleImg],
-                            outputs=[mix_seed1_Num, mix_seed2_Num, mix_mixSlider, mix_maskDrop, mix_vector1, mix_vector2, mix_vector_result],
+                        mix_seed1_Img.upload(
+                            fn=get_seed_or_vector_from_image,
+                            inputs=[mix_seed1_Img],
+                            outputs=[mix_seed1_Num, mix_vector1],
                             show_progress=False
                         )
-                    
- 
-        seed_recycleButton.click(fn=copy_seed,show_progress=False,inputs=[seedTxt],outputs=[seedNum])
 
-        simple_runButton.click(fn=model.generate_image_from_ui,
-                        inputs=[modelDrop, seedNum, psiSlider],
-                        outputs=[resultImg, seedTxt])
+                    with gr.Column(elem_classes="mix-item"):
+                        mix_styleImg = gr.Image(label='Style Mixed Image', sources=['upload','clipboard'], interactive=True, type="filepath", elem_classes="gan-output")
+                        mix_vector_result = gr.Textbox(label='Vector Result', type="text", visible=False)
 
-        seed1_to_mixButton.click(fn=copy_seed, inputs=[seedTxt],outputs=[mix_seed1_Num])
-        seed2_to_mixButton.click(fn=copy_seed, inputs=[seedTxt],outputs=[mix_seed2_Num])
+                    with gr.Column(elem_classes="mix-item"):
+                        mix_seed2_Img = gr.Image(label='Seed 2 Image', sources=['upload','clipboard'], interactive=True, type="filepath", elem_classes="gan-output")
+                        mix_seed2_Txt = gr.Markdown(label='Seed 2', value="")
+                        mix_vector2 = gr.Textbox(label='Vector 2', type="text", visible=False)
 
-        mix_seed1_recycleButton.click(fn=copy_seed,show_progress=False,inputs=[mix_seed1_Txt],outputs=[mix_seed1_Num])
-        mix_seed2_recycleButton.click(fn=copy_seed,show_progress=False,inputs=[mix_seed2_Txt],outputs=[mix_seed2_Num])
+                        mix_seed2_Img.upload(
+                            fn=get_seed_or_vector_from_image,
+                            inputs=[mix_seed2_Img],
+                            outputs=[mix_seed2_Num, mix_vector2],
+                            show_progress=False
+                        )
 
-        mix_runButton.click(fn=model.generate_mix_from_ui,
-                        inputs=[modelDrop, mix_seed1_Num, mix_psi1Slider, mix_seed2_Num, mix_psi2Slider, mix_maskDrop, mix_mixSlider, mix_vector1, mix_vector2],
-                        outputs=[mix_seed1_Img, mix_seed2_Img, mix_styleImg, mix_seed1_Txt, mix_seed2_Txt, mix_vector1, mix_vector2, mix_vector_result])
+                    mix_styleImg.upload(
+                        fn=get_mix_params_from_image,
+                        inputs=[mix_styleImg],
+                        outputs=[mix_seed1_Num, mix_seed2_Num, mix_mixSlider, mix_maskDrop, mix_vector1, mix_vector2, mix_vector_result],
+                        show_progress=False
+                    )
+
+                    mix_seed1_luckyButton.click(fn=lambda: clearSeed(model.newSeed()), show_progress=False, inputs=[], outputs=[mix_seed1_Num, mix_vector1])
+                    mix_seed2_luckyButton.click(fn=lambda: clearSeed(model.newSeed()), show_progress=False, inputs=[], outputs=[mix_seed2_Num, mix_vector2])
+                    mix_seed1_randButton.click(fn=lambda: clearSeed(-1), show_progress=False, inputs=[], outputs=[mix_seed1_Num, mix_vector1])
+                    mix_seed2_randButton.click(fn=lambda: clearSeed(-1), show_progress=False, inputs=[], outputs=[mix_seed2_Num, mix_vector2])
+                    mix_seed1_recycleButton.click(fn=copy_seed,show_progress=False,inputs=[mix_seed1_Txt],outputs=[mix_seed1_Num, mix_vector1])
+                    mix_seed2_recycleButton.click(fn=copy_seed,show_progress=False,inputs=[mix_seed2_Txt],outputs=[mix_seed2_Num, mix_vector2])
+
+                    mix_runButton.click(fn=model.generate_mix_from_ui,
+                                    inputs=[modelDrop, mix_seed1_Num, mix_psi1Slider, mix_seed2_Num, mix_psi2Slider, mix_maskDrop, mix_mixSlider, mix_vector1, mix_vector2],
+                                    outputs=[mix_seed1_Img, mix_seed2_Img, mix_styleImg, mix_seed1_Txt, mix_seed2_Txt, mix_vector1, mix_vector2, mix_vector_result])
+
+            seed1_to_mixButton.click(fn=copy_seed, inputs=[seedTxt],outputs=[mix_seed1_Num])
+            seed2_to_mixButton.click(fn=copy_seed, inputs=[seedTxt],outputs=[mix_seed2_Num])
+
 
         return [(ui_component, "GAN Generator", "gan_generator_tab")]
 
@@ -196,8 +190,8 @@ def on_ui_settings():
     
 script_callbacks.on_ui_settings(on_ui_settings)
 
-def copy_seed(seedTxt) -> Union[int, None]:
-    return str_utils.str2num(seedTxt)
+def copy_seed(seedTxt) -> (Union[int, None], None):
+    return str_utils.str2num(seedTxt), None
 
 def update_model_list() -> tuple[str]:
     files = file_utils.model_path.glob("*.pkl")
@@ -274,3 +268,5 @@ def get_mix_params_from_image(img) -> tuple[int,int,float,str]:
     
     return seed1, seed2, mix, mask, vector1, vector2, vector_mix
 
+def clearSeed(value: int=-1):
+    return value, None
