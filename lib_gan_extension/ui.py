@@ -123,35 +123,39 @@ def on_ui_tabs():
                         with gr.Column(elem_classes="mix-item"):
                             mix_seed1_Img = gr.Image(label='Seed 1 Image',sources=['upload','clipboard'], interactive=True, type="filepath", elem_classes="gan-output")
                             mix_seed1_Txt = gr.Markdown(label='Seed 1', value="")
+                            mix_vector1 = gr.Textbox(label='Vector 1', type="text", visible=False)
+
                             mix_seed1_Img.upload(
-                                fn=get_seed_from_image,
+                                fn=get_seed_or_vector_from_image,
                                 inputs=[mix_seed1_Img],
-                                outputs=[mix_seed1_Num],
+                                outputs=[mix_seed1_Num, mix_vector1],
                                 show_progress=False
                             )
-                            mix_vector1 = gr.Textbox(label='Vector 1', type="text")
 
                         with gr.Column(elem_classes="mix-item"):
                             mix_styleImg = gr.Image(label='Style Mixed Image', sources=['upload','clipboard'], interactive=True, type="filepath", elem_classes="gan-output")
-                            mix_styleImg.upload(
-                                fn=get_mix_params_from_image,
-                                inputs=[mix_styleImg],
-                                outputs=[mix_seed1_Num, mix_seed2_Num, mix_mixSlider, mix_maskDrop],
-                                show_progress=False
-                            )
-                            mix_vector_result = gr.Textbox(label='Vector Result', type="text")
-                        
+                            mix_vector_result = gr.Textbox(label='Vector Result', type="text", visible=False)
+
                         with gr.Column(elem_classes="mix-item"):
                             mix_seed2_Img = gr.Image(label='Seed 2 Image', sources=['upload','clipboard'], interactive=True, type="filepath", elem_classes="gan-output")
                             mix_seed2_Txt = gr.Markdown(label='Seed 2', value="")
+                            mix_vector2 = gr.Textbox(label='Vector 2', type="text", visible=False)
+
                             mix_seed2_Img.upload(
-                                fn=get_seed_from_image,
+                                fn=get_seed_or_vector_from_image,
                                 inputs=[mix_seed2_Img],
-                                outputs=[mix_seed2_Num],
+                                outputs=[mix_seed2_Num, mix_vector2],
                                 show_progress=False
                             )
-                            mix_vector2 = gr.Textbox(label='Vector 2', type="text")
 
+                        mix_styleImg.upload(
+                            fn=get_mix_params_from_image,
+                            inputs=[mix_styleImg],
+                            outputs=[mix_seed1_Num, mix_seed2_Num, mix_mixSlider, mix_maskDrop, mix_vector1, mix_vector2, mix_vector_result],
+                            show_progress=False
+                        )
+                    
+ 
         seed_recycleButton.click(fn=copy_seed,show_progress=False,inputs=[seedTxt],outputs=[seedNum])
 
         simple_runButton.click(fn=model.generate_image_from_ui,
@@ -239,6 +243,12 @@ def update_image_padding():
 def get_seed_from_image(img) -> int:
     return get_params_from_image(img)[0]
 
+def get_seed_or_vector_from_image(img) -> int:
+    p = metadata.parse_params_from_image(img)
+    seed = p.get('seed',-1)
+    vector = p.get('tensor',None)
+    return seed, vector
+
 def get_params_from_image(img) -> tuple[int,float]:
     seed,psi,model_name = -1, 0.7, default_model()
     p = metadata.parse_params_from_image(img)
@@ -258,7 +268,9 @@ def get_mix_params_from_image(img) -> tuple[int,int,float,str]:
     seed2 = p.get('seed2',seed2)
     mix = p.get('mix',mix)
     mask = p.get('mask',mask)
-    model_name = p.get('model',model_name)
-
-    return seed1, seed2, mix, mask #, model_name
+    vector1 = p.get('tensor1',None)
+    vector2 = p.get('tensor2',None)
+    vector_mix = p.get('tensor',None)
+    
+    return seed1, seed2, mix, mask, vector1, vector2, vector_mix
 

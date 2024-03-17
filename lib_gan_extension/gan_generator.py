@@ -47,7 +47,7 @@ class GanGenerator:
         w1 = str_utils.str2tensor(w1).to(self.device) if w1 != "" else None
         w2 = str_utils.str2tensor(w2).to(self.device) if w2 != "" else None
 
-        img1, img2, img3, w3 = self.generate_image_mix(seed1, psi1, seed2, psi2, interpType, mix, global_state.image_pad, w1, w2)
+        img1, img2, img3, w1, w2, w3 = self.generate_image_mix(seed1, psi1, seed2, psi2, interpType, mix, global_state.image_pad, w1, w2)
         seedTxt1 = f"Seed 1: {str(seed1)} ({str_utils.num2hex(seed1)})" if w1 is None else "Seed 1: None (vector provided)"
         seedTxt2 = f"Seed 2: {str(seed2)} ({str_utils.num2hex(seed2)})" if w2 is None else "Seed 2: None (vector provided)"
 
@@ -80,12 +80,21 @@ class GanGenerator:
         return output
 
     def generate_image_mix(self, seed1: int, psi1: float, seed2: int, psi2: float, interpType: str, mix: float, pad: float,
-                            w1: Union[torch.Tensor,None], w2: Union[torch.Tensor,None]) -> (Image.Image, Image.Image, Image.Image, Union[torch.Tensor,None]):
+                            w1: Union[torch.Tensor,None], w2: Union[torch.Tensor,None]) -> (
+                                    Image.Image, Image.Image, Image.Image,
+                                    Union[torch.Tensor,None], Union[torch.Tensor,None], Union[torch.Tensor,None]):
         params = {'seed1': seed1, 'seed2': seed2, 'psi1': psi1, 'psi2': psi2, 'mix': mix, 'interp': interpType}
+        vparams = {}
+        if w1 is not None:
+            vparams['tensor1'] = str_utils.tensor2str(w1)
+            params['seed1'] = f"V{hash(w1)}"
+        if w2 is not None:
+            vparams['tensor2'] = str_utils.tensor2str(w2)
+            params['seed2'] = f"V{hash(w2)}"
 
         img1, w1 = self.find_or_generate_base_image(seed1, psi1, w1)
         if seed1 == seed2:
-            return img1, img1, img1, w1
+            return img1, img1, img1, w1, w1, w1
         img2, w2 = self.find_or_generate_base_image(seed2, psi2, w2)
 
         filename = self.image_path_with_params(params, base="mix")
@@ -93,16 +102,20 @@ class GanGenerator:
         if img3 is None:
             w_mix = self.mix_weights(w1, w2, mix, interpType)
             img3 = self.GAN.w_to_image(w_mix)
-            self.save_image_to_file(img3, filename, params)
+            vparams["tensor"] = str_utils.tensor2str(w_mix)
+            self.save_image_to_file(img3, filename, {**params, **vparams})
+        else:
+            p = metadata.parse_params_from_image(img3)
+            w_mix = p.get('tensor')
+            vparams["tensor"] = str_utils.tensor2str(w_mix)
 
-        if pad == 1.0:
-            return img1, img2, img3, w_mix
+        if pad != 1.0:
+            img3 = self.pad_image(img3,pad)
+            params['pad'] = pad
+            filename = self.image_path_with_params(params, base="mix")
+            self.save_image_to_file(img3, filename, {**params, **vparams})
 
-        img3p = self.pad_image(img3,pad)
-        filename = f"{basename}-pad{pad}.{global_state.image_format}"
-        self.save_image_to_file(img3p, filename, params)
-        
-        return img1, img2, img3p, w_mix
+        return img1, img2, img3, w1, w2, w_mix
         
     def pad_image(self, image: Image.Image, factor: float=1.0) -> Image.Image:
         resolution = self.GAN.img_resolution
@@ -157,9 +170,6 @@ class GanGenerator:
         params = {'seed': seed, 'psi': psi}
         if w is not None: # don't save file
             img = self.GAN.w_to_image(w)
-            path = self.image_path_with_params({"hash": hash(w) }, base="tensor", include_key=True)
-            params['tensor'] = str_utils.tensor2str(w)
-            self.save_image_to_file(img, path, params)
             return img, w
         
         w = self.GAN.get_w_from_seed(**params)
@@ -167,7 +177,6 @@ class GanGenerator:
         path = self.image_path_with_params(params)
         params['tensor'] = str_utils.tensor2str(w)
         self.save_image_to_file(img, path, params)
-
         return img, w
 
     def save_image_to_file(self, image: Image.Image, filename: str, params: dict = None):

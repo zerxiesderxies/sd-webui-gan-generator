@@ -27,7 +27,7 @@ def num2base(num: int, base: int=36) -> str:
 
 def tensor2str(tensor: Union[torch.Tensor, np.ndarray]) -> str:
     if isinstance(tensor, torch.Tensor):
-        logger("converting to numpy")
+        # logger("converting to numpy")
         tensor = tensor.cpu().numpy()
     with io.BytesIO() as f:
         np.save(f, tensor)
