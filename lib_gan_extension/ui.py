@@ -159,8 +159,8 @@ def on_ui_tabs():
                     mix_seed2_luckyButton.click(fn=lambda: clearSeed(model.newSeed()), show_progress=False, inputs=[], outputs=[mix_seed2_Num, mix_vector2])
                     mix_seed1_randButton.click(fn=lambda: clearSeed(-1), show_progress=False, inputs=[], outputs=[mix_seed1_Num, mix_vector1])
                     mix_seed2_randButton.click(fn=lambda: clearSeed(-1), show_progress=False, inputs=[], outputs=[mix_seed2_Num, mix_vector2])
-                    mix_seed1_recycleButton.click(fn=copy_seed,show_progress=False,inputs=[mix_seed1_Txt],outputs=[mix_seed1_Num, mix_vector1])
-                    mix_seed2_recycleButton.click(fn=copy_seed,show_progress=False,inputs=[mix_seed2_Txt],outputs=[mix_seed2_Num, mix_vector2])
+                    mix_seed1_recycleButton.click(fn=copy_seed_and_clear_vector,show_progress=False,inputs=[mix_seed1_Txt],outputs=[mix_seed1_Num, mix_vector1])
+                    mix_seed2_recycleButton.click(fn=copy_seed_and_clear_vector,show_progress=False,inputs=[mix_seed2_Txt],outputs=[mix_seed2_Num, mix_vector2])
                     mix_psi1_Slider.change(fn=lambda:None, inputs=[], outputs=mix_vector1)
                     mix_psi2_Slider.change(fn=lambda:None, inputs=[], outputs=mix_vector2)
 
@@ -194,7 +194,10 @@ def on_ui_settings():
     
 script_callbacks.on_ui_settings(on_ui_settings)
 
-def copy_seed(seedTxt) -> (Union[int, None], None):
+def copy_seed(seedTxt) -> (Union[int, None]):
+    return str_utils.str2num(seedTxt)
+
+def copy_seed_and_clear_vector(seedTxt) -> (Union[int, None], None):
     return str_utils.str2num(seedTxt), None
 
 def update_model_list() -> tuple[str]:
